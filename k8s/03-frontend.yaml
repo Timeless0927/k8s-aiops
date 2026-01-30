@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aiops-frontend
+  namespace: aiops-system
+  labels:
+    app: aiops
+    component: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aiops
+      component: frontend
+  template:
+    metadata:
+      labels:
+        app: aiops
+        component: frontend
+    spec:
+      containers:
+        - name: frontend
+          # 在生产环境，前端应该是一个 Nginx 容器，这里假设已经 Build 并 COPY 到了 Nginx 镜像
+          image: k8s-aiops-frontend:latest 
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              name: http
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aiops-frontend-svc
+  namespace: aiops-system
+spec:
+  selector:
+    app: aiops
+    component: frontend
+  ports:
+    - port: 80
+      targetPort: 80
+      name: http
+  type: ClusterIP

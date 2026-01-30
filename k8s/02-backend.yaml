@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aiops-backend
+  namespace: aiops-system
+  labels:
+    app: aiops
+    component: backend
+spec:
+  replicas: 1  # 生产环境建议 2+
+  selector:
+    matchLabels:
+      app: aiops
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: aiops
+        component: backend
+    spec:
+      serviceAccountName: aiops-agent-sa
+      containers:
+        - name: backend
+          image: k8s-aiops-backend:latest  # 这里的镜像名需替换为实际 Registry 地址
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: ENV
+              value: "production"
+            - name: LOG_LEVEL
+              value: "INFO"
+            - name: PROMETHEUS_URL
+              value: "http://prometheus-server.monitoring.svc.cluster.local" # 需根据实际情况修改
+            - name: LOKI_URL
+              value: "http://loki.monitoring.svc.cluster.local:3100"       # 需根据实际情况修改
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aiops-secrets
+                  key: openai-api-key
+          livenessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aiops-backend-svc
+  namespace: aiops-system
+spec:
+  selector:
+    app: aiops
+    component: backend
+  ports:
+    - port: 8000
+      targetPort: 8000
+      name: http
+  type: ClusterIP

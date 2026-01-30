@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: aiops-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: aiops-agent-sa
+  namespace: aiops-system
+---
+# Role: 限制 Agent 只能管理 aiops-system 命名空间下的资源
+# 如果需要管理业务 App，可能需要 ClusterRole 或在目标 Namespace 下绑定 Role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: aiops-agent-reader
+rules:
+  # 1. 读取所有 Pod 的日志和状态 (用于分析)
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "events", "services", "endpoints"]
+    verbs: ["get", "list", "watch"]
+  # 2. 读取 Deployment/StatefulSet (用于分析架构)
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+    verbs: ["get", "list", "watch"]
+  # 3. 读取 Metrics (如果 Metrics Server 存在)
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods", "nodes"]
+    verbs: ["get", "list"]
+
+---
+# 绑定 Reader 权限
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: aiops-agent-reader-binding
+subjects:
+  - kind: ServiceAccount
+    name: aiops-agent-sa
+    namespace: aiops-system
+roleRef:
+  kind: ClusterRole
+  name: aiops-agent-reader
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# Role: 允许 Agent 在当前 Namespace 存储状态 (ConfigMap/Lease)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: aiops-agent-writer
+  namespace: aiops-system
+rules:
+  # 允许 Agent 重启自身或其他 Pod (仅限本 Namespace Demo)
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["delete"]
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: aiops-agent-writer-binding
+  namespace: aiops-system
+subjects:
+  - kind: ServiceAccount
+    name: aiops-agent-sa
+    namespace: aiops-system
+roleRef:
+  kind: Role
+  name: aiops-agent-writer
+  apiGroup: rbac.authorization.k8s.io

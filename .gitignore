@@ -1,0 +1,7 @@
+/.agent
+/.env
+/.venv
+/alembic.ini
+/app.db
+/backend.log
+/kubeconfig
