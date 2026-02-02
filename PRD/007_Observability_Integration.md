@@ -98,10 +98,14 @@
 - **Empty Result**: 明确返回 "No metrics/logs found for this query."，引导 LLM 扩大时间范围或放宽过滤条件。
 
 ## 4. Execution Plan
-- [ ] **Infrastructure**: 确认本地可以通过 nodeport 访问 Prometheus/Loki (或者使用 Mock 数据)。
-- [ ] **Impl Prometheus**: 开发 `prometheus_plugin`.
-- [ ] **Impl Loki**: 开发 `loki_plugin`.
-- [ ] **Integration**: 注册插件并更新 `executor.py`.
-- [ ] **Verification**: 
-    - 询问 "查询 node_load1"。
-    - 询问 "查询 pod 日志"。
+- [x] **Infrastructure**: 确认本地可以通过 nodeport 访问 Prometheus/Loki (或者使用 Mock 数据)。
+- [x] **Impl Prometheus**: 开发 `prometheus_plugin`.
+- [x] **Impl Loki**: 开发 `loki_plugin`.
+- [x] **Integration**: 注册插件并更新 `executor.py`.
+- [x] **Verification**: 
+    - [x] 询问 "查询 node_load1"。
+    - [x] 询问 "查询 pod 日志"。
+
+## 5. Status
+- **Date**: 2026-02-02
+- **State**: Completed ✅

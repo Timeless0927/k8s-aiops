@@ -1,0 +1,23 @@
+
+# Git
+.git
+.gitignore
+
+# Dependencies
+node_modules
+.venv
+__pycache__
+
+# Environment
+.env
+kubeconfig
+
+# Data
+*.db
+*.sqlite
+*.log
+
+# Binaries
+*.exe
+*.zip
+backend/k8sgpt.exe

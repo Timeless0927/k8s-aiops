@@ -1,7 +1,24 @@
-/.agent
-/.env
-/.venv
-/alembic.ini
-/app.db
-/backend.log
-/kubeconfig
+
+# Dependencies
+node_modules/
+.venv/
+__pycache__/
+
+# Environment & Config
+.env
+.agent/
+kubeconfig
+
+# System & Data
+.DS_Store
+*.log
+*.db
+*.sqlite
+alembic.ini
+
+# Binaries
+*.exe
+*.zip
+backend/k8sgpt.exe
+backend/k8sgpt
+backend/plugins/builtins/**/bin/

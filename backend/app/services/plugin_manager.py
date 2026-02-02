@@ -89,24 +89,45 @@ class PluginManager:
                 sys.modules[name] = module
                 spec.loader.exec_module(module)
                 
-                # 2. Check Protocol
-                if hasattr(module, "get_tools") and hasattr(module, "get_manifest"):
-                    manifest = module.get_manifest()
-                    manifest["id"] = name
-                    manifest["is_builtin"] = is_builtin
-                    manifest["status"] = "active" if is_enabled else "disabled"
+            # 2. Check Protocol (Hybrid Support)
+            manifest = None
+            tools_list = []
+            plugin_instance = None
+
+            # A. Class-Based Plugin (New Standard)
+            if hasattr(module, "Plugin") and isinstance(module.Plugin, type):
+                # Instantiate the plugin
+                plugin_instance = module.Plugin()
+                if hasattr(plugin_instance, "manifest") and hasattr(plugin_instance, "get_tools"):
+                     manifest = plugin_instance.manifest
+                     tools_list = plugin_instance.get_tools()
+                     # Call lifecycle hook
+                     if is_enabled:
+                         plugin_instance.on_load()
+            
+            # B. Functional Plugin (Legacy Support)
+            elif hasattr(module, "get_tools") and hasattr(module, "get_manifest"):
+                manifest = module.get_manifest()
+                tools_list = module.get_tools()
+
+            if manifest:
+                manifest["id"] = name
+                manifest["is_builtin"] = is_builtin
+                manifest["status"] = "active" if is_enabled else "disabled"
+                
+                self.plugin_metadata[name] = manifest
+                
+                if is_enabled:
+                    # Store instance or module? Let's store module for legacy, instance for new
+                    self.plugins[name] = plugin_instance if plugin_instance else module
                     
-                    self.plugin_metadata[name] = manifest
-                    
-                    if is_enabled:
-                        self.plugins[name] = module
-                        # 3. Register Tools
-                        self._register_tools(module.get_tools(), plugin_name=name)
-                        logger.info(f"Loaded plugin: {name}")
-                    else:
-                        logger.info(f"Plugin {name} is disabled. Skipping tool registration.")
+                    # 3. Register Tools
+                    self._register_tools(tools_list, plugin_name=name)
+                    logger.info(f"Loaded plugin: {name} (Class-based: {bool(plugin_instance)})")
                 else:
-                    logger.warning(f"Skipping {name}: Missing get_tools() or get_manifest()")
+                    logger.info(f"Plugin {name} is disabled. Skipping tool registration.")
+            else:
+                logger.warning(f"Skipping {name}: Invalid plugin structure (Missing manifest/tools)")
         except Exception as e:
             logger.error(f"Failed to load plugin {path}: {e}")
             self.plugin_metadata[name] = {

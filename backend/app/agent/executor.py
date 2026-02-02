@@ -78,6 +78,18 @@ async def run_agent_graph(websocket, conversation_id: str, last_user_message: st
         if "k8sgpt_plugin" in active_plugins:
             rules.append("5. DIAGNOSTICS: Use `run_k8sgpt` for health checks if available.")
 
+        if "prometheus_plugin" in active_plugins:
+             rules.append("6. METRICS: Use `run_prometheus_query` to answer performance questions (CPU, Memory, Rate).")
+             rules.append("7. PROMQL: Examples: `sum(rate(container_cpu_usage_seconds_total[5m]))` (CPU), `sum(container_memory_usage_bytes)` (Memory).")
+        
+        if "loki_plugin" in active_plugins:
+             rules.append("8. LOGS: Use `run_loki_query` to answer troubleshooting questions about errors or exceptions.")
+             rules.append("9. LOGQL: Examples: `{namespace=~'.+'}` (all), `{app='foo'} |= 'error'`.")
+        
+        if "knowledge_plugin" in active_plugins:
+             rules.append("10. MEMORY: Before answering complex issues, ALWAYS use `search_knowledge`.")
+             rules.append("11. LEARNING: If you solved a novel problem, use `save_insight` to record it.")
+
         rules_text = "\n".join(rules)
 
         system_content = f"""You are a Kubernetes AIOps Agent specialized in troubleshooting.
