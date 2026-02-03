@@ -2,14 +2,38 @@ import httpx
 import json
 import logging
 import time
+import urllib.parse
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-async def run_loki_query(query: str, limit: int = 50) -> str:
+def _build_grafana_link(query: str) -> str:
+    """Helper to build Grafana Explore URL"""
+    try:
+        # Default range: last 1h
+        explore_data = {
+            "datasource": "Loki",
+            "queries": [{"refId": "A", "expr": query}],
+            "range": {"from": "now-1h", "to": "now"}
+        }
+        
+        # Grafana requires URL-encoded JSON in 'left' param
+        json_str = json.dumps(explore_data)
+        encoded_json = urllib.parse.quote(json_str)
+        
+        base_url = settings.GRAFANA_URL.rstrip('/')
+        return f"{base_url}/explore?orgId=1&left={encoded_json}"
+    except Exception as e:
+        logger.error(f"Failed to build Grafana link: {e}")
+        return ""
+
+async def run_loki_query(query: str, limit: int = 20) -> str:
     """
     Executes a LogQL query against Loki to retrieve logs.
+    Limit defaults to 20 lines to save tokens.
+    Returns logs + Grafana Deep Link.
     """
+    # ... (URL setup) ...
     base_url = settings.LOKI_URL.rstrip('/')
     url = f"{base_url}/loki/api/v1/query_range"
     
@@ -45,25 +69,42 @@ async def run_loki_query(query: str, limit: int = 50) -> str:
                  return f"Error: Loki query failed. Response: {json.dumps(data)}"
             
             result = data.get("data", {}).get("result", [])
+            
+            # Generate Deep Link
+            grafana_link = _build_grafana_link(query)
+            link_text = f"\n\n🔗 [View Logs in Grafana]({grafana_link})" if grafana_link else ""
+
             if not result:
-                return "No logs found for this query in the last 1 hour."
+                return f"No logs found for this query in the last 1 hour.{link_text}"
             
             # Format logs for LLM readability
             logs = []
+            total_chars = 0
+            MAX_TOTAL_CHARS = 8000
+            MAX_LINE_CHARS = 1000
+            
             for stream_entry in result:
-                # labels = stream_entry.get("stream", {})
                 values = stream_entry.get("values", [])
                 for ts, line in values:
-                    # Timestamp in nanoseconds -> readable? 
-                    # LLM can handle raw timestamp or we can ignore it to save context.
-                    # Let's keep it simple: just the log line.
-                    # Or maybe formatted: [ts] line
+                     # Truncate long lines (e.g. huge JSON blobs)
+                    if len(line) > MAX_LINE_CHARS:
+                        line = line[:MAX_LINE_CHARS] + "...(truncated)"
+                    
                     logs.append(line)
             
-            # Return top N lines distinct
-            # Sometimes logs are duplicated in streams
-            unique_logs = list(set(logs))
-            return "\n".join(unique_logs[:limit])
+            # Key step: Deduplicate while preserving order (Python 3.7+ dict is ordered)
+            unique_logs = list(dict.fromkeys(logs))
+            
+            # Final limiter
+            final_output = []
+            for log in unique_logs[:limit]:
+                if total_chars + len(log) > MAX_TOTAL_CHARS:
+                    final_output.append("...(Response truncated to save tokens)...")
+                    break
+                final_output.append(log)
+                total_chars += len(log)
+
+            return "\n".join(final_output) + link_text
 
     except httpx.ConnectError:
         return f"Error: Could not connect to Loki at {base_url}. Please check configuration."

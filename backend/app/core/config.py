@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     # Prometheus & Loki
     PROMETHEUS_URL: str = Field("http://prometheus-k8s.monitoring:9090", env="PROMETHEUS_URL")
     LOKI_URL: str = Field("http://loki.monitoring:3100", env="LOKI_URL")
+    GRAFANA_URL: str = Field("http://grafana.monitoring:3000", env="GRAFANA_URL")
     
     # Kubernetes
     # 如果在集群内运行，通常不需要配置 KUBECONFIG，使用 ServiceAccount
@@ -30,7 +31,11 @@ class Settings(BaseSettings):
     MODEL_NAME: str = Field("gpt-4-1106-preview", env="MODEL_NAME")
 
     class Config:
-        env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".env")
+        # Prioritize root .env, then backend/.env
+        env_file = [
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), ".env"), # Root
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".env") # Backend
+        ]
         extra = "ignore"
 
 # 单例配置对象
