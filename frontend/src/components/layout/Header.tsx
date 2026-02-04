@@ -2,8 +2,8 @@ import React from 'react';
 import { Shield, Bell } from 'lucide-react';
 
 interface HeaderProps {
-    view: 'chat' | 'plugins';
-    setView: (view: 'chat' | 'plugins') => void;
+    view: 'chat' | 'plugins' | 'settings' | 'alerts';
+    setView: (view: 'chat' | 'plugins' | 'settings' | 'alerts') => void;
     status: string;
     alertsCount: number;
 }
@@ -24,14 +24,14 @@ export const Header: React.FC<HeaderProps> = ({ view, setView, status, alertsCou
 
                 <nav className="flex items-center gap-1">
                     <button
-                        onClick={() => setView('chat')}
+                        onClick={() => window.history.pushState({}, '', '/chat')}
                         className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${view === 'chat' ? 'text-slate-900 bg-slate-100' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'}`}
                     >
                         对话
                         {view === 'chat' && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 bg-slate-900 rounded-full mb-1"></span>}
                     </button>
                     <button
-                        onClick={() => setView('plugins')}
+                        onClick={() => window.history.pushState({}, '', '/plugins')}
                         className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${view === 'plugins' ? 'text-slate-900 bg-slate-100' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'}`}
                     >
                         插件

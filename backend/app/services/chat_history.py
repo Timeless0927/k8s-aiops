@@ -6,10 +6,11 @@ import uuid
 
 class ChatHistoryService:
     @staticmethod
-    async def create_conversation(session: AsyncSession, title: str = None) -> Conversation:
+    async def create_conversation(session: AsyncSession, title: str = None, id: str = None, type: str = "chat") -> Conversation:
         conversation = Conversation(
-            id=str(uuid.uuid4()),
-            title=title or "New Conversation"
+            id=id or str(uuid.uuid4()),
+            title=title or "New Conversation",
+            type=type
         )
         session.add(conversation)
         await session.commit()
@@ -64,11 +65,11 @@ class ChatHistoryService:
         return True
 
     @staticmethod
-    async def ensure_conversation(session: AsyncSession, conversation_id: str | None = None) -> Conversation:
+    async def ensure_conversation(session: AsyncSession, conversation_id: str | None = None, type: str = "chat") -> Conversation:
         if conversation_id:
             conv = await ChatHistoryService.get_conversation(session, conversation_id)
             if conv:
                 return conv
         
         # Create new if not exists or no ID provided
-        return await ChatHistoryService.create_conversation(session)
+        return await ChatHistoryService.create_conversation(session, id=conversation_id, type=type)

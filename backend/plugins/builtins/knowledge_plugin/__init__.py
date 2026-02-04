@@ -50,20 +50,33 @@ class KnowledgePlugin(BasePlugin):
             },
             {
                 "name": "save_insight",
-                "description": "Save a new learned lesson or fix to long-term memory. Use this AFTER successfully solving a difficult problem.",
+                "description": "Save a structured insight to long-term memory. Use this AFTER successfully solving a difficult problem.",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "topic": {
                             "type": "string",
-                            "description": "Brief title of the insight (e.g. 'Fix for CrashLoopBackOff')."
+                            "description": "Brief title (e.g. 'Fix for CrashLoopBackOff on Service X')."
                         },
                         "content": {
                             "type": "string",
-                            "description": "Detailed description of the problem and resolution."
+                            "description": "Detailed solution/fix steps."
+                        },
+                        "symptoms": {
+                            "type": "string",
+                            "description": "What was the error? (e.g. 'OOMKilled', 'Connection Refused')."
+                        },
+                        "root_cause": {
+                            "type": "string",
+                            "description": "The fundamental reason (e.g. 'Missing ConfigMap')."
+                        },
+                        "tags": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Keywords (e.g. ['kafka', 'network', 'timeout'])."
                         }
                     },
-                    "required": ["topic", "content"]
+                    "required": ["topic", "content", "tags"]
                 },
                 "handler": save_insight
             }

@@ -27,11 +27,11 @@ def _build_grafana_link(query: str) -> str:
         logger.error(f"Failed to build Grafana link: {e}")
         return ""
 
-async def run_loki_query(query: str, limit: int = 20) -> str:
+async def run_loki_query(query: str, limit: int = 10, mode: str = "logs") -> str:
     """
-    Executes a LogQL query against Loki to retrieve logs.
-    Limit defaults to 20 lines to save tokens.
-    Returns logs + Grafana Deep Link.
+    Executes a LogQL query against Loki.
+    - limit: Max lines (default 10).
+    - mode: 'logs' (default) or 'stats' (returns counts/patterns).
     """
     # ... (URL setup) ...
     base_url = settings.LOKI_URL.rstrip('/')
@@ -78,28 +78,40 @@ async def run_loki_query(query: str, limit: int = 20) -> str:
                 return f"No logs found for this query in the last 1 hour.{link_text}"
             
             # Format logs for LLM readability
+            # Stricter Token Limits (Option A)
             logs = []
             total_chars = 0
-            MAX_TOTAL_CHARS = 8000
-            MAX_LINE_CHARS = 1000
+            MAX_TOTAL_CHARS = 2000 # Reduced from 8000
+            MAX_LINE_CHARS = 500   # Reduced from 1000
             
             for stream_entry in result:
                 values = stream_entry.get("values", [])
                 for ts, line in values:
-                     # Truncate long lines (e.g. huge JSON blobs)
                     if len(line) > MAX_LINE_CHARS:
                         line = line[:MAX_LINE_CHARS] + "...(truncated)"
                     
                     logs.append(line)
             
-            # Key step: Deduplicate while preserving order (Python 3.7+ dict is ordered)
+            # Stats Mode (Option C)
+            if mode == "stats":
+                count = len(logs)
+                # Simple keyword analysis
+                error_count = sum(1 for l in logs if "error" in l.lower() or "exception" in l.lower())
+                return f"""📊 **Log Statistics**
+- **Total Lines Found**: {count}
+- **Potential Errors**: {error_count}
+- **Query**: `{query}`
+
+💡 **Tip**: Use `run_loki_query(query="{query} |= \\"error\\"", limit=5)` to see error details.
+{link_text}"""
+
+            # Dedup
             unique_logs = list(dict.fromkeys(logs))
             
-            # Final limiter
             final_output = []
             for log in unique_logs[:limit]:
                 if total_chars + len(log) > MAX_TOTAL_CHARS:
-                    final_output.append("...(Response truncated to save tokens)...")
+                    final_output.append(f"\n⚠️ **Output Truncated** (Exceeded {MAX_TOTAL_CHARS} chars). Use stricter filters.")
                     break
                 final_output.append(log)
                 total_chars += len(log)

@@ -1,0 +1,97 @@
+insights:
+- id: 304fbb84-a62b-4d10-b190-8f2376b74c03
+  created_at: '2026-02-04T10:20:51.447102'
+  last_seen: '2026-02-04T10:20:51.447107'
+  topic: Fix High CPU Usage for openebs-io-engine Pods
+  content: 发现 openebs 命名空间中的 openebs-io-engine Pods 存在异常高的 CPU 使用率，达到接近 400% 的水平。这些
+    Pod 包括：openebs-io-engine-9tdv9、openebs-io-engine-4tt8w 和 openebs-io-engine-w4kkf。解决方案可能包括：1.
+    检查 openebs 引擎的配置和负载情况；2. 调查是否存在资源争用或性能瓶颈；3. 检查 openebs 引擎的日志以查找错误或异常行为；4. 考虑调整资源限制或优化存储配置。
+  symptoms: CPU usage above 399% for openebs-io-engine Pods
+  root_cause: openebs-io-engine Pods consuming excessive CPU resources
+  solution: 发现 openebs 命名空间中的 openebs-io-engine Pods 存在异常高的 CPU 使用率，达到接近 400% 的水平。这些
+    Pod 包括：openebs-io-engine-9tdv9、openebs-io-engine-4tt8w 和 openebs-io-engine-w4kkf。解决方案可能包括：1.
+    检查 openebs 引擎的配置和负载情况；2. 调查是否存在资源争用或性能瓶颈；3. 检查 openebs 引擎的日志以查找错误或异常行为；4. 考虑调整资源限制或优化存储配置。
+  tags:
+  - cpu
+  - openebs
+  - high-usage
+  - storage
+  count: 1
+- id: 3989ba3b-d57b-414e-ac7e-1e523e4770ce
+  created_at: '2026-02-04T10:42:08.514364'
+  last_seen: '2026-02-04T10:42:08.514371'
+  topic: TestAlert Investigation - High CPU on OpenEBS Pods
+  content: 在调查 TestAlert 告警时发现，虽然告警中提到的 pod-123 不存在，但集群中存在多个 OpenEBS IO 引擎 Pod CPU
+    使用率异常高的情况（接近 400%）。实际的高 CPU 使用问题出现在 openebs-io-engine 相关 Pod 上，而非告警中提到的 pod-123。建议检查
+    OpenEBS 存储引擎的配置和性能，同时验证告警规则的准确性。
+  symptoms: CPU usage above 90% (actually 400% on openebs-io-engine pods)
+  root_cause: TestAlert referenced non-existent pod-123, but actual high CPU usage
+    found on OpenEBS IO engine pods
+  solution: 在调查 TestAlert 告警时发现，虽然告警中提到的 pod-123 不存在，但集群中存在多个 OpenEBS IO 引擎 Pod CPU
+    使用率异常高的情况（接近 400%）。实际的高 CPU 使用问题出现在 openebs-io-engine 相关 Pod 上，而非告警中提到的 pod-123。建议检查
+    OpenEBS 存储引擎的配置和性能，同时验证告警规则的准确性。
+  tags:
+  - cpu
+  - openebs
+  - testalert
+  - investigation
+  count: 1
+- id: 9867d244-424f-43c7-803b-bc5a6702ef56
+  created_at: '2026-02-04T10:45:10.870477'
+  last_seen: '2026-02-04T10:45:10.870484'
+  topic: OpenEBS CPU Usage is Normally High
+  content: OpenEBS is known to consume high CPU resources under normal operating conditions.
+    High CPU usage by OpenEBS pods should not be treated as an anomaly or performance
+    issue unless it's accompanied by other symptoms like storage performance degradation
+    or application impact. This is expected behavior for OpenEBS storage engine pods.
+  symptoms: High CPU usage (potentially 400% or more) on OpenEBS IO engine pods
+  root_cause: Normal operational behavior of OpenEBS storage engine
+  solution: OpenEBS is known to consume high CPU resources under normal operating
+    conditions. High CPU usage by OpenEBS pods should not be treated as an anomaly
+    or performance issue unless it's accompanied by other symptoms like storage performance
+    degradation or application impact. This is expected behavior for OpenEBS storage
+    engine pods.
+  tags:
+  - openebs
+  - cpu
+  - normal-behavior
+  - storage
+  count: 1
+- id: f8b7ac0d-81e3-4f6b-b17d-24ac2a17791a
+  created_at: '2026-02-04T10:56:29.435480'
+  last_seen: '2026-02-04T10:56:29.435485'
+  topic: TestAlert 告警误报 - OpenEBS IO 引擎高 CPU 使用率
+  content: 在调查 TestAlert 告警时发现，虽然告警中提到的 pod-123 不存在或 CPU 正常，但集群中存在多个 OpenEBS IO 引擎
+    Pod CPU 使用率异常高的情况（接近 400%）。实际的高 CPU 使用问题出现在 openebs-io-engine 相关 Pod 上，而非告警中提到的目标
+    Pod。建议检查 OpenEBS 存储引擎的配置和性能，同时验证告警规则的准确性。
+  symptoms: CPU 使用率超过 400% (4.0)，告警显示为 TestAlert 针对 pod-123
+  root_cause: 告警规则配置不当，实际高 CPU 使用发生在 OpenEBS IO 引擎 Pod 上，而非告警中指定的目标 Pod
+  solution: 在调查 TestAlert 告警时发现，虽然告警中提到的 pod-123 不存在或 CPU 正常，但集群中存在多个 OpenEBS IO 引擎
+    Pod CPU 使用率异常高的情况（接近 400%）。实际的高 CPU 使用问题出现在 openebs-io-engine 相关 Pod 上，而非告警中提到的目标
+    Pod。建议检查 OpenEBS 存储引擎的配置和性能，同时验证告警规则的准确性。
+  tags:
+  - cpu
+  - openebs
+  - high-cpu
+  - alert-misconfiguration
+  - storage
+  count: 1
+- id: 19544d95-8a42-4c3f-9c37-fea320550263
+  created_at: '2026-02-04T11:00:52.222900'
+  last_seen: '2026-02-04T11:00:52.222909'
+  topic: TestAlert 误报 - OpenEBS IO引擎高CPU使用率
+  content: 经过调查发现，告警中提到的pod-123实际上不存在或CPU使用率正常。真正的高CPU使用率出现在OpenEBS IO引擎Pod上（openebs-io-engine-9tdv9、openebs-io-engine-4tt8w、openebs-io-engine-w4kkf），这些Pod的CPU使用率接近400%。根据知识库信息，OpenEBS在正常运行条件下也会消耗较高的CPU资源，这属于预期行为。建议：1.
+    验证告警规则的准确性，确保监控目标正确；2. 对于OpenEBS Pod的高CPU使用率，除非伴随存储性能下降或应用影响，否则不应视为异常；3. 考虑为OpenEBS
+    Pod设置更合适的CPU限制或调整告警阈值。
+  symptoms: TestAlert告警显示pod-123 CPU使用率高于90%，但实际该Pod不存在或CPU正常，而OpenEBS IO引擎Pod CPU使用率接近400%
+  root_cause: 告警规则配置错误导致的误报，实际高CPU使用率来自OpenEBS IO引擎Pod，但这属于OpenEBS的正常运行行为
+  solution: 经过调查发现，告警中提到的pod-123实际上不存在或CPU使用率正常。真正的高CPU使用率出现在OpenEBS IO引擎Pod上（openebs-io-engine-9tdv9、openebs-io-engine-4tt8w、openebs-io-engine-w4kkf），这些Pod的CPU使用率接近400%。根据知识库信息，OpenEBS在正常运行条件下也会消耗较高的CPU资源，这属于预期行为。建议：1.
+    验证告警规则的准确性，确保监控目标正确；2. 对于OpenEBS Pod的高CPU使用率，除非伴随存储性能下降或应用影响，否则不应视为异常；3. 考虑为OpenEBS
+    Pod设置更合适的CPU限制或调整告警阈值。
+  tags:
+  - cpu
+  - openebs
+  - alert
+  - false-positive
+  - storage
+  count: 1

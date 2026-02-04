@@ -4,13 +4,14 @@ import { Header } from './components/layout/Header'
 import { ChatArea } from './components/features/chat/ChatArea'
 import { ChatInput } from './components/features/chat/ChatInput'
 import { AlertsTopPanel } from './components/features/alerts/AlertsTopPanel'
+import { AlertsPage } from './components/features/alerts/AlertsPage'
 import PluginDashboard from './components/features/plugins/PluginDashboard'
+import { SettingsPage } from './components/features/settings/SettingsPage'
 import { useChatWebSocket } from './hooks/useChatWebSocket'
-import { Terminal } from 'lucide-react'
 
 function App() {
     console.log("Rendering App Component");
-    const [view, setView] = useState<'chat' | 'plugins'>('chat')
+    const [view, setView] = useState<'chat' | 'plugins' | 'settings' | 'alerts'>('chat')
     const [input, setInput] = useState('')
     const [alerts, setAlerts] = useState<any[]>([])
 
@@ -65,20 +66,59 @@ function App() {
         fetchHistory();
     }, [currentConversationId, setMessages]);
 
-    // Fetch alerts periodically
     useEffect(() => {
-        const fetchAlerts = async () => {
-            try {
-                const res = await fetch('/api/alerts')
-                if (res.ok) {
-                    const uiAlerts = await res.json()
-                    setAlerts(uiAlerts || [])
-                }
-            } catch (err) {
-                console.error("Failed to fetch alerts", err)
-            }
-        }
+        const handleLocationChange = () => {
+            const path = window.location.pathname;
 
+            // Check params
+            const params = new URLSearchParams(window.location.search);
+            const urlId = params.get('id');
+            if (urlId) {
+                console.log("Deep Link ID:", urlId);
+                setCurrentConversationId(urlId);
+            } else if (path === '/' || path === '/chat') {
+                // If on chat view but no ID, reset to new chat
+                console.log("Route is /chat with no ID -> Resetting state");
+                setCurrentConversationId(null);
+                setUiSelectedId(null);
+                localStorage.removeItem("activeConversationId");
+            }
+
+            if (path === '/settings') setView('settings');
+            else if (path === '/plugins') setView('plugins');
+            else if (path === '/alerts') setView('alerts');
+            else setView('chat');
+        };
+        handleLocationChange(); // Initial check
+        window.addEventListener('popstate', handleLocationChange);
+
+        // HACK: Intercept link clicks in Sidebar
+        const originalPushState = history.pushState;
+        history.pushState = function (...args) {
+            originalPushState.apply(this, args);
+            handleLocationChange();
+        };
+
+        return () => {
+            window.removeEventListener('popstate', handleLocationChange);
+            history.pushState = originalPushState;
+        }
+    }, []);
+
+    // Fetch alerts periodically
+    const fetchAlerts = async () => {
+        try {
+            const res = await fetch('/api/alerts')
+            if (res.ok) {
+                const uiAlerts = await res.json()
+                setAlerts(uiAlerts || [])
+            }
+        } catch (err) {
+            console.error("Failed to fetch alerts", err)
+        }
+    }
+
+    useEffect(() => {
         fetchAlerts()
         const interval = setInterval(fetchAlerts, 5000)
         return () => clearInterval(interval)
@@ -92,21 +132,34 @@ function App() {
 
     const handleAlertClick = (alert: any) => {
         if (view !== 'chat') setView('chat');
-        if (alert.analysis) {
-            setInput(`Please analyze the alert: ${alert.name} on ${alert.pod}`);
-        } else {
-            setInput(`Analyze alert ${alert.name} on pod ${alert.pod}`)
-        }
+        // Use correct property names from backend (title, source)
+        // If analysis exists (from local state?) - currently backend doesn't trigger analysis this way,
+        // but let's keep the logic safe.
+        const targetTitle = alert.title || alert.name || 'Unknown Alert';
+        const targetSource = alert.source || alert.pod || 'Unknown Source';
+
+        setInput(`请帮我分析告警: ${targetTitle} (来源: ${targetSource})`);
     }
 
     // Sidebar Handlers
+    // Sidebar Handlers
     const handleSelectConversation = (id: string) => {
+        // Force navigate to /chat + ID
+        const newUrl = new URL(window.location.origin + '/chat');
+        newUrl.searchParams.set('id', id);
+        window.history.pushState({}, '', newUrl.toString());
+
+        // Redundant but safe
         setCurrentConversationId(id);
         setUiSelectedId(id);
         localStorage.setItem("activeConversationId", id);
     };
 
     const handleNewChat = () => {
+        // Force navigate to /chat (Clean State)
+        const newUrl = new URL(window.location.origin + '/chat');
+        window.history.pushState({}, '', newUrl.toString());
+
         setCurrentConversationId(null);
         setUiSelectedId(null);
         localStorage.removeItem("activeConversationId");
@@ -135,7 +188,7 @@ function App() {
 
                 {/* Main Content Area */}
                 <main className="flex-1 overflow-hidden relative flex flex-col">
-                    {view === 'chat' ? (
+                    {view === 'chat' && (
                         <>
                             {/* Chat Header Status (Simple) */}
 
@@ -156,9 +209,23 @@ function App() {
                                 status={status}
                             />
                         </>
-                    ) : (
+                    )}
+
+                    {view === 'alerts' && (
+                        <div className="h-full overflow-hidden flex flex-col">
+                            <AlertsPage alerts={alerts} onRefresh={fetchAlerts} />
+                        </div>
+                    )}
+
+                    {view === 'plugins' && (
                         <div className="h-full overflow-y-auto p-6">
                             <PluginDashboard />
+                        </div>
+                    )}
+
+                    {view === 'settings' && (
+                        <div className="h-full overflow-y-auto">
+                            <SettingsPage />
                         </div>
                     )}
                 </main>

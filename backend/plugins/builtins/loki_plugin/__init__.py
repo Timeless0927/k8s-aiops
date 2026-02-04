@@ -26,7 +26,12 @@ class LokiPlugin(BasePlugin):
                         },
                         "limit": {
                             "type": "integer",
-                            "description": "Max number of log lines to return (default 50)."
+                            "description": "Max number of log lines to return (default 10). Keep this small to save tokens."
+                        },
+                        "mode": {
+                             "type": "string",
+                             "enum": ["logs", "stats"],
+                             "description": "Output mode. Use 'stats' first to get an overview. Use 'logs' to see actual content."
                         }
                     },
                     "required": ["query"]

@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
-async def run_agent_graph(websocket, conversation_id: str, last_user_message: str, session: AsyncSession = None):
+async def run_agent_graph(websocket, conversation_id: str, last_user_message: str, session: AsyncSession = None, conversation_type: str = "chat"):
     """
     Executes the LangGraph agent and streams results to WebSocket.
     Uses provided session or creates a new one.
@@ -88,7 +88,7 @@ async def run_agent_graph(websocket, conversation_id: str, last_user_message: st
         
         if "knowledge_plugin" in active_plugins:
              rules.append("10. MEMORY: Before answering complex issues, ALWAYS use `search_knowledge`.")
-             rules.append("11. LEARNING: If you solved a novel problem, use `save_insight` to record it.")
+             rules.append("11. LEARNING: If the user TEACHES you a solution or CONFIRMS a fix, you MUST use `save_insight` to record it. Don't wait for permission.")
 
         rules_text = "\n".join(rules)
 
@@ -110,6 +110,19 @@ async def run_agent_graph(websocket, conversation_id: str, last_user_message: st
             elif msg.role == "tool":
                 call_id = getattr(msg, "tool_call_id", "unknown") 
                 initial_messages.append(ToolMessage(tool_call_id=call_id, content=msg.content, name="unknown"))
+        
+        # New User Message (Append and Persist)
+        if last_user_message:
+            # 1. Start with in-memory append
+            initial_messages.append(HumanMessage(content=last_user_message))
+            
+            # 2. Persist to DB
+            try:
+                # Ensure conversation exists first!
+                await ChatHistoryService.ensure_conversation(db_session, conversation_id, conversation_type)
+                await ChatHistoryService.add_message(db_session, conversation_id, "user", last_user_message)
+            except Exception as e:
+                logger.error(f"Failed to save user prompt: {e}")
         
         inputs = {"messages": initial_messages}
         

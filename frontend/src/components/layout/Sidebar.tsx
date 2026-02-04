@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MessageSquare, Trash2, Plus } from 'lucide-react';
+import { MessageSquare, Trash2, Plus, AlertOctagon } from 'lucide-react';
 
 interface Conversation {
     id: string;
@@ -137,8 +137,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelect, currentId, onNewChat
             </div>
 
             {/* Footer */}
-            <div className="p-4 text-center border-t border-border/50">
-                <span className="text-[10px] text-slate-400 font-mono select-none">v0.5.0 • Pro Max</span>
+            <div className="p-4 border-t border-border/50 space-y-1">
+                <button
+                    onClick={() => window.history.pushState({}, '', '/alerts')}
+                    className="flex w-full items-center gap-2 text-slate-500 hover:text-slate-900 group transition-colors p-2 rounded-lg hover:bg-slate-100"
+                >
+                    <AlertOctagon size={16} />
+                    <span className="text-xs font-medium">告警中心</span>
+                </button>
+                <button
+                    onClick={() => window.history.pushState({}, '', '/settings')}
+                    className="flex w-full items-center gap-2 text-slate-500 hover:text-slate-900 group transition-colors p-2 rounded-lg hover:bg-slate-100"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-settings"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.74v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
+                    <span className="text-xs font-medium">系统设置</span>
+                </button>
+                <div className="mt-2 text-center text-[10px] text-slate-400 font-mono select-none">v0.5.0 • Pro Max</div>
             </div>
         </div>
     );

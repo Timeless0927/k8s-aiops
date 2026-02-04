@@ -95,7 +95,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ messages, status, currentToo
                         </div>
                     </div>
                 )}
-                <div ref={messagesEndRef} />
+                <div ref={messagesEndRef} className="h-48 w-full shrink-0" />
             </div>
         </div>
     );

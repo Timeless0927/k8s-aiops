@@ -29,7 +29,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ msg }) => {
                 <div className={`text-sm leading-relaxed inline-block text-left whitespace-pre-wrap break-words
                     ${isUser
                         ? 'p-3.5 px-5 bg-[#eff0ff] text-indigo-950 rounded-[20px] rounded-br-[4px]' // User: Soft Indigo Pill
-                        : 'p-0 text-gray-800' // Agent: Clean Text (No bubble)
+                        : 'p-4 bg-white border border-gray-200 text-gray-800 rounded-2xl rounded-tl-sm shadow-sm' // Agent: White Bubble (Matches Streaming)
                     }`}
                 >
                     <div className={`prose max-w-none prose-p:my-0 prose-sm ${isUser ? '' : 'prose-gray'}`}>

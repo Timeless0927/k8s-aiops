@@ -37,9 +37,26 @@ async def startup_event():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         
+    # 1.5 初始化默认设置
+    from app.services.settings_service import SettingsService
+    from app.db.session import AsyncSessionLocal
+    async with AsyncSessionLocal() as db:
+        await SettingsService.initialize_defaults(db)
+        
     # 2. 初始化插件系统
     from app.services.plugin_manager import plugin_manager
     await plugin_manager.initialize()
+
+    # 3. 启动 AlertQueue Worker (Active Monitoring)
+    from app.services.alert_queue import AlertQueueService
+    import asyncio
+    asyncio.create_task(AlertQueueService().process_queue())
+
+# 注册 Active Monitoring Webhook
+from app.api.endpoints import webhooks, settings, alerts
+app.include_router(webhooks.router, prefix="/api/v1/webhook", tags=["Alertmanager"])
+app.include_router(settings.router, prefix="/api/v1/settings", tags=["Settings"])
+app.include_router(alerts.router, prefix="/api", tags=["Alerts"])
 
 @app.get("/health", tags=["System"])
 async def health_check():

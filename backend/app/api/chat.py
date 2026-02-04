@@ -35,7 +35,10 @@ async def list_conversations():
     
     async with AsyncSessionLocal() as session:
         result = await session.execute(
-            select(Conversation).order_by(desc(Conversation.created_at)).limit(50)
+            select(Conversation)
+            .where(Conversation.type == "chat")
+            .order_by(desc(Conversation.created_at))
+            .limit(50)
         )
         conversations = result.scalars().all()
         return [

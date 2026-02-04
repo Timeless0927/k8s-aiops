@@ -12,6 +12,7 @@ class Conversation(Base):
 
     id = Column(String, primary_key=True, default=generate_uuid)
     title = Column(String, nullable=True)
+    type = Column(String, default="chat", index=True) # chat, alert
     created_at = Column(DateTime, default=datetime.utcnow)
     
     messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")

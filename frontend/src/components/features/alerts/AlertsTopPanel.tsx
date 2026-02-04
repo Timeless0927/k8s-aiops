@@ -7,7 +7,10 @@ interface AlertsTopPanelProps {
 }
 
 export const AlertsTopPanel: React.FC<AlertsTopPanelProps> = ({ alerts, onAlertClick }) => {
-    if (alerts.length === 0) {
+    // Only show active alerts
+    const activeAlerts = alerts.filter(a => a.status === 'active');
+
+    if (activeAlerts.length === 0) {
         return (
             <div className="bg-emerald-50 border-b border-emerald-100 py-2 px-6 flex items-center justify-center gap-2 text-emerald-700 text-sm font-medium animate-in slide-in-from-top-2">
                 <CheckCircle size={16} />
@@ -20,10 +23,10 @@ export const AlertsTopPanel: React.FC<AlertsTopPanelProps> = ({ alerts, onAlertC
         <div className="bg-white border-b border-gray-200 py-3 px-6 overflow-x-auto">
             <div className="flex items-center gap-4 min-w-max">
                 <div className="flex items-center gap-2 text-muted text-xs font-bold uppercase tracking-wider shrink-0 mr-2">
-                    <Activity size={14} /> Active Alerts ({alerts.length})
+                    <Activity size={14} /> Active Alerts ({activeAlerts.length})
                 </div>
 
-                {alerts.map((alert) => (
+                {activeAlerts.map((alert) => (
                     <div
                         key={alert.id}
                         onClick={() => onAlertClick(alert)}
@@ -41,10 +44,10 @@ export const AlertsTopPanel: React.FC<AlertsTopPanelProps> = ({ alerts, onAlertC
 
                         <div className="flex flex-col">
                             <span className={`text-sm font-semibold ${alert.severity === 'critical' ? 'text-red-900' : 'text-amber-900'}`}>
-                                {alert.name}
+                                {alert.title || alert.name || 'Alert'}
                             </span>
                             <span className="text-[10px] text-muted font-mono leading-none">
-                                {alert.pod} • {alert.time}
+                                {alert.source || alert.pod || 'Unknown'} • {alert.created_at ? new Date(alert.created_at).toLocaleTimeString() : 'Just now'}
                             </span>
                         </div>
                     </div>
