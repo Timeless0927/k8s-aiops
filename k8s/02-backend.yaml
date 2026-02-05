@@ -7,7 +7,7 @@ metadata:
     app: aiops
     component: backend
 spec:
-  replicas: 1  # 生产环境建议 2+
+  replicas: 2  # Production ready
   selector:
     matchLabels:
       app: aiops
@@ -21,7 +21,7 @@ spec:
       serviceAccountName: aiops-agent-sa
       containers:
         - name: backend
-          image: k8s-aiops-backend:latest  # 这里的镜像名需替换为实际 Registry 地址
+          image: k8s-aiops-backend:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
@@ -29,17 +29,29 @@ spec:
           env:
             - name: ENV
               value: "production"
+            - name: KUBE_IN_CLUSTER
+              value: "True"
             - name: LOG_LEVEL
               value: "INFO"
             - name: PROMETHEUS_URL
-              value: "http://prometheus-server.monitoring.svc.cluster.local" # 需根据实际情况修改
+              value: "http://prometheus-server.monitoring.svc.cluster.local"
             - name: LOKI_URL
-              value: "http://loki.monitoring.svc.cluster.local:3100"       # 需根据实际情况修改
+              value: "http://loki.monitoring.svc.cluster.local:3100"
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: aiops-secrets
+                secretKeyRef:
+                  name: aiops-secrets
                   key: openai-api-key
+            - name: OPENAI_BASE_URL
+              value: "https://apis.iflow.cn/v1"
+            - name: MODEL_NAME
+              value: "qwen3-coder-plus"
+            - name: GRAFANA_URL
+              value: "http://grafana.5gfusion.com/" # Optional: For frontend links
+            - name: BACKEND_CORS_ORIGINS
+              value: "*" # Safe behind Nginx Reverse Proxy
           livenessProbe:
             exec:
               command:
@@ -48,13 +60,19 @@ spec:
                 - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
             initialDelaySeconds: 15
             periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
           resources:
             requests:
-              cpu: "100m"
-              memory: "128Mi"
+              cpu: "200m"
+              memory: "256Mi"
             limits:
-              cpu: "500m"
-              memory: "512Mi"
+              cpu: "1000m"
+              memory: "1Gi"
 ---
 apiVersion: v1
 kind: Service
