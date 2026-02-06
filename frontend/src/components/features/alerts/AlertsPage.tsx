@@ -23,20 +23,20 @@ export const AlertsPage: React.FC<AlertsPageProps> = ({ alerts, onRefresh }) => 
 
     const handleResolve = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        await fetch(`/api/alerts/${id}?status=resolved`, { method: 'PUT' });
+        await fetch(`/api/v1/alerts/${id}?status=resolved`, { method: 'PUT' });
         onRefresh();
     };
 
     const handleDelete = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
         if (!confirm('确定要删除这条告警记录吗？')) return;
-        await fetch(`/api/alerts/${id}`, { method: 'DELETE' });
+        await fetch(`/api/v1/alerts/${id}`, { method: 'DELETE' });
         onRefresh();
     };
 
     const handlePruneResolved = async () => {
         if (!confirm('确定要清空所有【已解决】的告警吗？')) return;
-        await fetch('/api/alerts/prune?mode=resolved', { method: 'DELETE' });
+        await fetch('/api/v1/alerts/prune?mode=resolved', { method: 'DELETE' });
         onRefresh();
     };
 

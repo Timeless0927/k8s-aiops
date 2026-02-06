@@ -48,6 +48,13 @@ async def startup_event():
     from app.db.session import AsyncSessionLocal
     async with AsyncSessionLocal() as db:
         await SettingsService.initialize_defaults(db)
+        # Initialize LLM Config
+        from app.core.llm_config import LLMConfigManager
+        await LLMConfigManager.reload_config(db)
+        
+        # Initialize Monitoring Config
+        from app.core.monitoring_config import MonitoringConfigManager
+        await MonitoringConfigManager.reload_config(db)
         
     # 2. 初始化插件系统
     from app.services.plugin_manager import plugin_manager
@@ -59,10 +66,14 @@ async def startup_event():
     asyncio.create_task(AlertQueueService().process_queue())
 
 # 注册 Active Monitoring Webhook
-from app.api.endpoints import webhooks, settings, alerts
-app.include_router(webhooks.router, prefix="/api/v1/webhook", tags=["Alertmanager"])
-app.include_router(settings.router, prefix="/api/v1/settings", tags=["Settings"])
-app.include_router(alerts.router, prefix="/api", tags=["Alerts"])
+from app.api.endpoints import webhooks, alerts, system, settings
+
+app.include_router(chat.router, prefix="/api/v1/chat", tags=["chat"])
+app.include_router(webhooks.router, prefix="/api/v1/webhook", tags=["webhooks"])
+app.include_router(alerts.router, prefix="/api/v1/alerts", tags=["alerts"])
+app.include_router(system.router, prefix="/api/v1/system", tags=["system"])
+app.include_router(settings.router, prefix="/api/v1/settings", tags=["settings"])
+app.include_router(plugins.router, prefix="/api/v1/plugins", tags=["plugins"])
 
 @app.get("/health", tags=["System"])
 async def health_check():

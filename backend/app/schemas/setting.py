@@ -17,3 +17,12 @@ class SettingResponse(SettingBase):
 
     class Config:
         from_attributes = True
+
+class LLMTestRequest(BaseModel):
+    api_key: str
+    base_url: str
+    model_name: str = "gpt-4-turbo"
+
+class LLMTestResponse(BaseModel):
+    success: bool
+    message: str

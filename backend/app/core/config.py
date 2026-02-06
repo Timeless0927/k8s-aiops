@@ -13,9 +13,9 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = Field("INFO", env="LOG_LEVEL")
     
     # Prometheus & Loki
-    PROMETHEUS_URL: str = Field("http://prometheus-k8s.monitoring:9090", env="PROMETHEUS_URL")
-    LOKI_URL: str = Field("http://loki.monitoring:3100", env="LOKI_URL")
-    GRAFANA_URL: str = Field("http://grafana.monitoring:3000", env="GRAFANA_URL")
+    PROMETHEUS_URL: str | None = Field("http://prometheus-k8s.monitoring:9090", env="PROMETHEUS_URL")
+    LOKI_URL: str | None = Field("http://loki.monitoring:3100", env="LOKI_URL")
+    GRAFANA_URL: str | None = Field("http://grafana.monitoring:3000", env="GRAFANA_URL")
     
     # Kubernetes
     # 如果在集群内运行，通常不需要配置 KUBECONFIG，使用 ServiceAccount
@@ -26,9 +26,9 @@ class Settings(BaseSettings):
     DATABASE_URL: str = Field("sqlite+aiosqlite:///./app.db", env="DATABASE_URL")
     
     # LLM (External API)
-    OPENAI_API_KEY: str = Field(..., env="OPENAI_API_KEY")
-    OPENAI_BASE_URL: str = Field("https://api.openai.com/v1", env="OPENAI_BASE_URL")
-    MODEL_NAME: str = Field("gpt-4-1106-preview", env="MODEL_NAME")
+    OPENAI_API_KEY: str | None = Field(None, env="OPENAI_API_KEY")
+    OPENAI_BASE_URL: str | None = Field("https://api.openai.com/v1", env="OPENAI_BASE_URL")
+    MODEL_NAME: str | None = Field("gpt-4-turbo", env="MODEL_NAME")
 
     class Config:
         # Prioritize root .env, then backend/.env

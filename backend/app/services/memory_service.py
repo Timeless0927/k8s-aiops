@@ -18,41 +18,32 @@ class BeadsMemoryService:
         if cls._instance is None:
             cls._instance = super(BeadsMemoryService, cls).__new__(cls)
             # 存储在 knowledge_base/memory_store 下，避免污染主仓库
+            project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
             cls._instance.repo_path = os.path.join(
-                os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
+                project_root, 
+                "backend",
                 "knowledge_base", 
                 "memory_store"
             )
+            
+            # Detect bd executable
+            potential_bd = os.path.join(project_root, "bd.exe")
+            if os.path.exists(potential_bd):
+                 cls._instance.bd_cmd = potential_bd
+            else:
+                 cls._instance.bd_cmd = "bd"
+
             cls._instance._ensure_repo_initialized()
         return cls._instance
 
-    def _ensure_repo_initialized(self):
-        """Ensure the local git repo for beads exists."""
-        if not os.path.exists(self.repo_path):
-            os.makedirs(self.repo_path)
-        
-        # Check if it has .git
-        if not os.path.exists(os.path.join(self.repo_path, ".git")):
-            logger.info(f"Initializing Beads Memory Repo at {self.repo_path}")
-            try:
-                subprocess.run(["git", "init"], cwd=self.repo_path, check=True, capture_output=True)
-                # Config User for this local repo (required for commits)
-                subprocess.run(["git", "config", "user.email", "agent@aiops.local"], cwd=self.repo_path, check=True)
-                subprocess.run(["git", "config", "user.name", "AIOps Agent"], cwd=self.repo_path, check=True)
-                
-                # Create initial structure
-                with open(os.path.join(self.repo_path, "README.md"), "w", encoding='utf-8') as f:
-                    f.write("# AIOps Agent Memory Store\n\nManaged by Beads.")
-                
-                self._git_commit("Initial Commit")
-            except Exception as e:
-                logger.error(f"Failed to init beads repo: {e}")
+
 
     def _run_cli(self, args: List[str]) -> str:
         """Execute a bd CLI command in the repo directory."""
         try:
-            # Command is 'bd' (from beads-project)
-            cmd = ["bd"] + args
+
+            # Command is 'bd' (from beads-project) or local executable
+            cmd = [self.bd_cmd] + args
             logger.info(f"Executing Beads CLI: {' '.join(cmd)}")
             
             # 必须设置 CWD 到仓库目录
@@ -61,6 +52,8 @@ class BeadsMemoryService:
                 cwd=self.repo_path, 
                 capture_output=True, 
                 text=True, 
+                encoding='utf-8',
+                errors='replace',
                 check=True,
                 env={**os.environ, "PYTHONIOENCODING": "utf-8"}
             )
@@ -69,6 +62,9 @@ class BeadsMemoryService:
             logger.error(f"Beads CLI Error: {e.stderr}")
             # Don't raise immediately, log and return empty so Agent doesn't crash
             return f"Error: {e.stderr}"
+        except Exception as e:
+            logger.error(f"Beads CLI unexpected error: {e}")
+            return f"Error: {e}"
         except FileNotFoundError:
             logger.error("'bd' executable not found. Ensure 'beads-project' is installed.")
             return "Error: Command 'bd' not found."
@@ -141,10 +137,22 @@ class BeadsMemoryService:
 
     def _extract_id_from_output(self, output: str) -> Optional[str]:
         # Simple parser for "bd-xxxx"
+        # Parser for "Created issue: <id>"
+        # Output example: "✓ Created issue: memory_store-3jy"
         import re
-        match = re.search(r"(bd-[a-zA-Z0-9\.]+)", output)
+        # Remove ANSI codes for safety (optional but good)
+        clean_output = re.sub(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])', '', output)
+        
+        # Match "Created issue: <ID>"
+        match = re.search(r"Created issue:\s+([a-zA-Z0-9_\-\.]+)", clean_output)
         if match:
             return match.group(1)
+        
+        # Fallback for old/simple "bd-xxx" if standalone
+        match = re.search(r"(bd-[a-zA-Z0-9\.]+)", clean_output)
+        if match:
+            return match.group(1)
+            
         return None
 
 # Global Instance

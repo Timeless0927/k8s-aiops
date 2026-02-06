@@ -1,5 +1,13 @@
-from app.core.config import settings
-import os
-print(f"KUBE_IN_CLUSTER: {settings.KUBE_IN_CLUSTER}")
-print(f"KUBECONFIG: {settings.KUBECONFIG}")
-print(f"Env Var KUBECONFIG: {os.environ.get('KUBECONFIG')}")
+import requests
+import sys
+
+try:
+    print("Requesting settings...")
+    r = requests.get("http://127.0.0.1:8000/api/v1/settings/")
+    print(f"Status Code: {r.status_code}")
+    if r.status_code == 200:
+        print("Response:", r.json())
+    else:
+        print("Error:", r.text)
+except Exception as e:
+    print(f"Exception: {e}")

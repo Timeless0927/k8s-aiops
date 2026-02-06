@@ -117,21 +117,40 @@ class AlertQueueService:
 (注意：如果这是 'TestAlert'，这是一个单点测试。)
 
 **执行流程 (Execution Protocol)**:
-1. **第一步 (强制)**: 必须先调用 `search_knowledge` 工具，查询 `{alert_name}` 和 `{instance}` 是否有历史解决方案。
-    - 如果找到匹配的“已知问题”或“正常现象”，**请直接引用结论并结束**，无需进行后续排查。
-2. **第二步**: 如果知识库无记录，则再使用 `kubectl` 或 `promql` 进行排查。
+1.  **第一步 (Initialization)**: 必须先调用 `create_task`，标题为 "Investigating {alert_name} on {instance}"，优先级为 "high"。
+    -   *目的*: 建立短期记忆上下文，防止中断丢失。
+2.  **第二步 (Memory Recall)**: 调用 `search_knowledge` 工具，查询是否存在历史解决方案。
+    -   如果找到匹配方案，验证是否适用。
+3.  **第三步 (Investigation)**: 使用 `kubectl` (查看 Logs/Events/Describe) 或 `promql` (查看指标) 进行深入排查。
+    -   *目标*: 找到具体的 Root Cause (如 OOM, ImagePullBackOff, 端口冲突等)。
+4.  **第四步 (Memory Consolidation - IMPORTANT)**:
+    -   一旦你找到了**确定的根因**和**修复方案**，**必须立即调用 `save_insight`**。
+    -   不要等待用户指令。这是你的职业责任。
+    -   `save_insight` 参数提示:
+        -   `topic`: "Fix [AlertName] on [Instance]"
+        -   `symptoms`: "Pod处于CrashLoopBackOff状态，日志显示..."
+        -   `root_cause`: "配置错误/资源不足/网络中断"
+        -   `tags`: ["k8s", "alert", "{alert_name}"]
+    -   *注意*: 如果只是“正常现象”或“误报”，则无需保存。
+5.  **第五步 (Completion)**:
+    -   调用 `finish_task` 标记任务完成，并在 summary 中简要说明结果。
+    -   最后用中文总结你的发现和已采取的行动。
 
-现在，请开始行动。
+现在，请开始行动。记住：**你是专家，请主动积累知识。**
 """
             
             # 3. Create Ephemeral Conversation ID
             conversation_id = f"alert-{uuid.uuid4()}"
             
-            # 4. Mock WebSocket for Background Execution
+            # 4. Mock WebSocket for Background Execution (with Broadcast)
+            from app.services.connection_manager import manager as connection_manager
+            
             class MockWebSocket:
                 async def send_json(self, data):
-                    # In future, this connects to Notifier (DingTalk/Feishu)
-                    # For now, just log interesting events
+                    # Broadcast to real clients if any
+                    await connection_manager.broadcast_json(conversation_id, data)
+                    
+                    # Original Logging Logic
                     msg_type = data.get("type")
                     if msg_type == "tool_start":
                         logger.info(f"🤖 Agent Tool: {data.get('tool')} ({data.get('args')})")

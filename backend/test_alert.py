@@ -9,22 +9,23 @@ payload = {
         {
             "status": "firing",
             "labels": {
-                "alertname": "TestAlert",
+                "alertname": "JVM_GC_Overhead",
                 "severity": "critical",
-                "instance": "pod-123"
+                "instance": "order-service-pod-x",
+                "namespace": "payment"
             },
             "annotations": {
-                "summary": "High CPU Usage",
-                "description": "CPU usage is above 90%"
+                "summary": "High CPU and Frequent Full GC",
+                "description": "Pod is spending >98% time in GC. Old Gen usage is high."
             }
         }
     ],
-    "groupLabels": {"alertname": "TestAlert"},
+    "groupLabels": {"alertname": "JVM_GC_Overhead"},
     "commonLabels": {"severity": "critical"},
     "commonAnnotations": {},
     "externalURL": "http://alertmanager",
     "version": "4",
-    "groupKey": "{}:{alertname=\"TestAlert\"}"
+    "groupKey": "{}:{alertname=\"JVM_GC_Overhead\"}"
 }
 
 try:

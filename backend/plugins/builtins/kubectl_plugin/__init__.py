@@ -1,4 +1,4 @@
-from .tools import run_kubectl
+from .tools import run_kubectl, verify_connection
 
 def get_manifest():
     return {
@@ -25,5 +25,15 @@ def get_tools():
                 "required": ["args"]
             },
             "handler": run_kubectl
+        },
+        {
+            "name": "verify_connection",
+            "description": "Check if the agent is successfully connected to the Kubernetes cluster. Use this if commands fail unexpectedly.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            },
+            "handler": verify_connection
         }
     ]

@@ -8,7 +8,7 @@ from app.db.models.alert import Alert
 
 router = APIRouter()
 
-@router.get("/alerts", response_model=List[Dict[str, Any]])
+@router.get("/", response_model=List[Dict[str, Any]])
 async def get_alerts():
     """Get all alerts ordered by time desc."""
     async with AsyncSessionLocal() as db:
@@ -28,7 +28,7 @@ async def get_alerts():
             for a in alerts
         ]
 
-@router.put("/alerts/{alert_id}")
+@router.put("/{alert_id}")
 async def update_alert(alert_id: str, status: str = Query(..., regex="^(active|resolved)$")):
     """Update alert status."""
     async with AsyncSessionLocal() as db:
@@ -39,7 +39,7 @@ async def update_alert(alert_id: str, status: str = Query(..., regex="^(active|r
             raise HTTPException(status_code=404, detail="Alert not found")
         return {"status": "success"}
 
-@router.delete("/alerts/prune")
+@router.delete("/prune")
 async def prune_alerts(
     mode: str = Query("resolved", regex="^(resolved|expired)$"), 
     days: int = Query(30, ge=1)
@@ -60,7 +60,7 @@ async def prune_alerts(
         await db.commit()
         return {"deleted_count": result.rowcount}
 
-@router.delete("/alerts/{alert_id}")
+@router.delete("/{alert_id}")
 async def delete_alert(alert_id: str):
     """Delete a single alert."""
     async with AsyncSessionLocal() as db:

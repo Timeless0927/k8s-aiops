@@ -45,7 +45,14 @@ class SettingsService:
         defaults = [
             {"key": "dingtalk_webhook_url", "value": "", "category": "notification", "description": "Webhook URL for DingTalk notifications"},
             {"key": "dingtalk_secret", "value": "", "category": "notification", "description": "Security Secret (SEC...) for DingTalk Robot"},
-            {"key": "enable_auto_fix", "value": "false", "category": "automation", "description": "Enable Agent to automatically execute fix commands"}
+            {"key": "enable_auto_fix", "value": "false", "category": "automation", "description": "Enable Agent to automatically execute fix commands"},
+            {"key": "openai_api_key", "value": "", "category": "llm", "description": "API Key for OpenAI compatible provider"},
+            {"key": "openai_model_name", "value": "gpt-4-turbo", "category": "llm", "description": "Model name to use (e.g. gpt-4, deepseek-chat)"},
+            {"key": "openai_model_name", "value": "gpt-4-turbo", "category": "llm", "description": "Model name to use (e.g. gpt-4, deepseek-chat)"},
+            {"key": "openai_base_url", "value": "https://api.openai.com/v1", "category": "llm", "description": "Base URL for API requests"},
+            {"key": "prometheus_url", "value": "http://prometheus-k8s.monitoring:9090", "category": "monitoring", "description": "Prometheus API URL"},
+            {"key": "loki_url", "value": "http://loki.monitoring:3100", "category": "monitoring", "description": "Loki API URL"},
+            {"key": "grafana_url", "value": "http://grafana.monitoring:3000", "category": "monitoring", "description": "Grafana Dashboard URL"}
         ]
         
         for default in defaults:

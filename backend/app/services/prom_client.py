@@ -1,6 +1,6 @@
 import httpx
 import logging
-from app.core.config import settings
+from app.core.monitoring_config import MonitoringConfigManager
 
 logger = logging.getLogger(__name__)
 
@@ -8,8 +8,14 @@ class PrometheusClient:
     """
     Prometheus 查询客户端
     """
-    def __init__(self, base_url: str):
-        self.base_url = base_url
+    def __init__(self, base_url: str = None):
+        self._base_url = base_url
+
+    @property
+    def base_url(self):
+        if self._base_url:
+            return self._base_url
+        return MonitoringConfigManager.get_config().prometheus_url.rstrip('/')
 
     async def query(self, query: str) -> dict:
         """
@@ -33,4 +39,4 @@ class PrometheusClient:
                 return {"error": str(e)}
 
 # 全局单例
-prom_client = PrometheusClient(base_url=settings.PROMETHEUS_URL)
+prom_client = PrometheusClient()

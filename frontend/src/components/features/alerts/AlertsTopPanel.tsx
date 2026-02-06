@@ -14,7 +14,7 @@ export const AlertsTopPanel: React.FC<AlertsTopPanelProps> = ({ alerts, onAlertC
         return (
             <div className="bg-emerald-50 border-b border-emerald-100 py-2 px-6 flex items-center justify-center gap-2 text-emerald-700 text-sm font-medium animate-in slide-in-from-top-2">
                 <CheckCircle size={16} />
-                <span>All Systems Operational. No active alerts.</span>
+                <span>所有系统运行正常。无活动告警。</span>
             </div>
         );
     }

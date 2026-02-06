@@ -18,20 +18,29 @@ async def main():
     task_id = None
     try:
         task_id_info = await create_task(title="Test Memory System", description="Verifying integration", priority="high")
+        # The service returns the ID directly if extraction succeeded, or the full output if not.
+        # We try to detect if it looks like an ID or try to extract it again just in case.
         print(f"-> Task Created Output: {task_id_info}")
         
-        # Extract ID
-        match = re.search(r"(bd-[a-zA-Z0-9\.]+)", task_id_info)
-        if match:
-            task_id = match.group(1)
-            print(f"-> Extracted Task ID: {task_id}")
-        
+        # Simple heuristic: if it contains spaces or newlines, it's probably raw output.
+        # If it's a single token, it's the ID.
+        if " " not in task_id_info.strip():
+            task_id = task_id_info.strip()
+            print(f"-> Using returned string as Task ID: {task_id}")
+        else:
+            # Try regex
+            match = re.search(r"Created issue:\s+([a-zA-Z0-9_\-\.]+)", task_id_info)
+            if match:
+                task_id = match.group(1)
+                print(f"-> Extracted Task ID: {task_id}")
+
+        if task_id:
             # 2. Test Archival (Bridge)
             print(f"\n[2] Completing task {task_id} and archiving...")
             res = await finish_task(task_id, resolution_summary="Successfully verified with test script.")
             print(f"-> Finish Result: {res}")
         else:
-             print("!! Failed to extract Task ID. Skipping Archival test.")
+            print("!! Failed to extract Task ID. Skipping Archival test.")
 
     except Exception as e:
         print(f"!! Beads Test Failed (Expected on Windows without bd CLI): {e}")

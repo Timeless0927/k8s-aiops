@@ -1,5 +1,6 @@
 import React from 'react';
 import { Shield, Bell } from 'lucide-react';
+import { ClusterStatus } from '../features/ClusterStatus';
 
 interface HeaderProps {
     view: 'chat' | 'plugins' | 'settings' | 'alerts';
@@ -24,14 +25,20 @@ export const Header: React.FC<HeaderProps> = ({ view, setView, status, alertsCou
 
                 <nav className="flex items-center gap-1">
                     <button
-                        onClick={() => setView('chat')}
+                        onClick={() => {
+                            window.history.pushState({}, '', '/chat');
+                            window.dispatchEvent(new PopStateEvent('popstate'));
+                        }}
                         className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${view === 'chat' ? 'text-slate-900 bg-slate-100' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'}`}
                     >
                         对话
                         {view === 'chat' && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 bg-slate-900 rounded-full mb-1"></span>}
                     </button>
                     <button
-                        onClick={() => setView('plugins')}
+                        onClick={() => {
+                            window.history.pushState({}, '', '/plugins');
+                            window.dispatchEvent(new PopStateEvent('popstate'));
+                        }}
                         className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${view === 'plugins' ? 'text-slate-900 bg-slate-100' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'}`}
                     >
                         插件
@@ -40,6 +47,7 @@ export const Header: React.FC<HeaderProps> = ({ view, setView, status, alertsCou
             </div>
 
             <div className="flex gap-4 items-center">
+                <ClusterStatus />
                 <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-mono font-semibold border transition-all ${status === 'connected' || status === 'streaming' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
                     <div className={`w-1.5 h-1.5 rounded-full ${status === 'streaming' ? 'animate-ping bg-emerald-500' : (status === 'connected' ? 'bg-emerald-500' : 'bg-rose-500')}`}></div>
                     {status === 'streaming' ? '处理中' : (status === 'connected' ? '已连接' : '未连接')}

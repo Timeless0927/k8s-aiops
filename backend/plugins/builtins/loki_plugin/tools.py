@@ -3,7 +3,7 @@ import json
 import logging
 import time
 import urllib.parse
-from app.core.config import settings
+from app.core.monitoring_config import MonitoringConfigManager
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ def _build_grafana_link(query: str) -> str:
         json_str = json.dumps(explore_data)
         encoded_json = urllib.parse.quote(json_str)
         
-        base_url = settings.GRAFANA_URL.rstrip('/')
+        base_url = MonitoringConfigManager.get_config().grafana_url.rstrip('/')
         return f"{base_url}/explore?orgId=1&left={encoded_json}"
     except Exception as e:
         logger.error(f"Failed to build Grafana link: {e}")
@@ -34,7 +34,7 @@ async def run_loki_query(query: str, limit: int = 10, mode: str = "logs") -> str
     - mode: 'logs' (default) or 'stats' (returns counts/patterns).
     """
     # ... (URL setup) ...
-    base_url = settings.LOKI_URL.rstrip('/')
+    base_url = MonitoringConfigManager.get_config().loki_url.rstrip('/')
     url = f"{base_url}/loki/api/v1/query_range"
     
     # Default time range: last 1 hour

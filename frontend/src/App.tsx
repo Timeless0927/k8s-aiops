@@ -108,7 +108,7 @@ function App() {
     // Fetch alerts periodically
     const fetchAlerts = async () => {
         try {
-            const res = await fetch('/api/alerts')
+            const res = await fetch('/api/v1/alerts')
             if (res.ok) {
                 const uiAlerts = await res.json()
                 setAlerts(uiAlerts || [])
@@ -131,14 +131,15 @@ function App() {
     }
 
     const handleAlertClick = (alert: any) => {
-        if (view !== 'chat') setView('chat');
-        // Use correct property names from backend (title, source)
-        // If analysis exists (from local state?) - currently backend doesn't trigger analysis this way,
-        // but let's keep the logic safe.
-        const targetTitle = alert.title || alert.name || 'Unknown Alert';
-        const targetSource = alert.source || alert.pod || 'Unknown Source';
+        if (!alert.conversation_id) return;
 
-        setInput(`请帮我分析告警: ${targetTitle} (来源: ${targetSource})`);
+        // Navigate
+        const url = new URL(window.location.origin + '/chat');
+        url.searchParams.set('id', alert.conversation_id);
+        window.history.pushState({}, '', url.toString());
+        window.dispatchEvent(new PopStateEvent('popstate'));
+
+        if (view !== 'chat') setView('chat');
     }
 
     // Sidebar Handlers

@@ -86,13 +86,39 @@ async def run_agent_graph(websocket, conversation_id: str, last_user_message: st
              rules.append("8. LOGS: Use `run_loki_query` to answer troubleshooting questions about errors or exceptions.")
              rules.append("9. LOGQL: Examples: `{namespace=~'.+'}` (all), `{app='foo'} |= 'error'`.")
         
-        if "knowledge_plugin" in active_plugins:
-             rules.append("10. MEMORY: Before answering complex issues, ALWAYS use `search_knowledge`.")
-             rules.append("11. LEARNING: If the user TEACHES you a solution or CONFIRMS a fix, you MUST use `save_insight` to record it. Don't wait for permission.")
+        if "knowledge_plugin" in active_plugins or "memory_plugin" in active_plugins:
+             rules.append("10. MEMORY: Before answering complex issues, ALWAYS use `search_knowledge` (if available).")
+             rules.append("11. LEARNING: If the user TEACHES you a solution or CONFIRMS a fix, you MUST use `save_insight` to record it.")
+             rules.append("12. AUTONOMY: When solving an Alert autonomously, if you find a definitive Root Cause, you MUST save it immediately using `save_insight`.")
+        
+        if "memory_plugin" in active_plugins:
+             rules.append("13. SHORT-TERM MEMORY: You MUST use `create_task` if: 1. You plan to edit multiple files. 2. You are debugging a complex error requiring >2 steps. 3. Use `finish_task` when done.")
 
         rules_text = "\n".join(rules)
 
+        # ----------------------------------------------------
+        # K8s Connection Check & Anti-Hallucination Injection
+        # ----------------------------------------------------
+        k8s_status_text = ""
+        if "kubectl_plugin" in active_plugins:
+            from app.services.k8s_client import k8s_client
+            # Live Check
+            conn_status = k8s_client.check_connection()
+            if conn_status["connected"]:
+                k8s_status_text = "## CLUSTER STATUS: [ONLINE] ✅\n(You are connected to the cluster. You may run kubectl commands.)"
+            else:
+                k8s_status_text = f"""## CLUSTER STATUS: [OFFLINE] ❌
+(Error: {conn_status['error']})
+!!! CRITICAL WARNING !!!
+1. You are DISCONNECTED from the cluster.
+2. DO NOT try to run `run_kubectl` or `run_k8sgpt` or `run_prometheus_query`. They will fail.
+3. DO NOT HALLUCINATE or make up pod names/status.
+4. Tell the user explicitly: "I cannot connect to the cluster right now."
+5. Suggest checking the Kubeconfig or network."""
+
         system_content = f"""You are a Kubernetes AIOps Agent specialized in troubleshooting.
+{k8s_status_text}
+
 ## ENABLED CAPABILITIES:
 {capabilities_text}
 
@@ -105,8 +131,20 @@ async def run_agent_graph(websocket, conversation_id: str, last_user_message: st
             if msg.role == "user":
                 initial_messages.append(HumanMessage(content=msg.content))
             elif msg.role == "assistant":
-                if not msg.content: msg.content = ""
-                initial_messages.append(AIMessage(content=msg.content))
+                content = msg.content or ""
+                tool_calls = []
+                
+                # Check for serialized tool calls
+                if ":::TOOL_CALLS:::" in content:
+                    parts = content.split(":::TOOL_CALLS:::")
+                    content = parts[0].strip() # The visible text
+                    try:
+                        import json
+                        tool_calls = json.loads(parts[1])
+                    except (IndexError, json.JSONDecodeError):
+                        logger.warning("Failed to parse persisted tool calls")
+                
+                initial_messages.append(AIMessage(content=content, tool_calls=tool_calls))
             elif msg.role == "tool":
                 call_id = getattr(msg, "tool_call_id", "unknown") 
                 initial_messages.append(ToolMessage(tool_call_id=call_id, content=msg.content, name="unknown"))
@@ -154,9 +192,27 @@ async def run_agent_graph(websocket, conversation_id: str, last_user_message: st
                     content = output
                     is_valid_msg = True
                 
-                if is_valid_msg and content:
+                if is_valid_msg:
+                     # Serialize Tool Calls if present
+                     tool_calls_data = []
+                     if hasattr(output, "tool_calls") and output.tool_calls:
+                         tool_calls_data = output.tool_calls
+                         
+                     # Construct persistable content
+                     # If we have tool calls, we MUST save them to restore state later.
+                     # Format: <Visible Content>\n:::TOOL_CALLS:::<JSON>
+                     persist_content = content
+                     if tool_calls_data:
+                         if not persist_content:
+                             # Add a placeholder for UI visibility
+                             persist_content = "🤖 [Thinking/Tool Use]"
+                         
+                         import json
+                         json_calls = json.dumps(tool_calls_data)
+                         persist_content += f"\n:::TOOL_CALLS:::{json_calls}"
+                     
                      try:
-                        saved_msg = await ChatHistoryService.add_message(db_session, conversation_id, "assistant", content)
+                        saved_msg = await ChatHistoryService.add_message(db_session, conversation_id, "assistant", persist_content)
                      except Exception as e:
                         logger.error(f"Persist Fail: {e}")
                 

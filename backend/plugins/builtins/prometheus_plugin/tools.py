@@ -1,7 +1,7 @@
 import httpx
 import json
 import logging
-from app.core.config import settings
+from app.core.monitoring_config import MonitoringConfigManager
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ def _build_grafana_link(query: str) -> str:
         json_str = json.dumps(explore_data)
         encoded_json = urllib.parse.quote(json_str)
         
-        base_url = settings.GRAFANA_URL.rstrip('/')
+        base_url = MonitoringConfigManager.get_config().grafana_url.rstrip('/')
         return f"{base_url}/explore?orgId=1&left={encoded_json}"
     except Exception as e:
         logger.error(f"Failed to build Grafana link: {e}")
@@ -35,7 +35,7 @@ async def run_prometheus_query(query: str, step: str = "1m") -> str:
     Executes a PromQL query against the configured Prometheus instance.
     Returns JSON result + Grafana Deep Link.
     """
-    base_url = settings.PROMETHEUS_URL.rstrip('/')
+    base_url = MonitoringConfigManager.get_config().prometheus_url.rstrip('/')
     url = f"{base_url}/api/v1/query"
     params = {"query": query}
     

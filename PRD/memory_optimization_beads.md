@@ -43,18 +43,18 @@
 #### Phase 1: Beads (Working Memory) - 已开始
 - [x] 引入 `beads-project`。
 - [x] 实现 `MemoryService` (封装 `bd` CLI)。
-- [ ] 开发 `TaskTools` (Agent Interface)。
+- [√] 开发 `TaskTools` (Agent Interface)。
 
-#### Phase 2: ChromaDB (Long-term Memory) - 新增
-- [ ] 引入 `chromadb` & `sentence-transformers` (或使用 OpenAI Embedding)。
-- [ ] 创建 `KnowledgeService`:
+#### Phase 2: ChromaDB (Long-term Memory) - 已完成
+- [√] 引入 `chromadb` & `sentence-transformers` (或使用 OpenAI Embedding)。
+- [√] 创建 `KnowledgeService`:
     - `add_document(text, metadata)`
     - `query_similar(text, n_results)`
-- [ ] 迁移旧 YAML 数据到 ChromaDB。
+- [√] 迁移旧 YAML 数据到 ChromaDB。
 
 #### Phase 3: 记忆联结 (The Bridge)
-- [ ] 实现 `archive_task_to_knowledge(task_id)` 函数。
-- [ ] 在 `MemoryService` 中监听任务完成事件，自动触发归档。
+- [√] 实现 `archive_task_to_knowledge(task_id)` 函数。
+- [√] 在 `MemoryService` 中监听任务完成事件，自动触发归档。
 
 ## 5. 技术栈选择
 - **Short-term**: Beads (Git-based JSONL)
@@ -62,9 +62,9 @@
 - **Embedding**: OpenAI `text-embedding-3-small` (推荐) 或 HuggingFace 本地模型。
 
 ## 5. 验证计划 (Verification)
-- [ ] **Unit Test**: 测试 Beads 的增删改查接口。
-- [ ] **Integration Test**: 模拟一个 Alert 处理流程，检查是否生成了对应的 Issue Graph。
-- [ ] **Persistence Test**: 重启服务，确认记忆是否丢失。
+- [√] **Unit Test**: 测试 Beads 的增删改查接口。
+- [√] **Integration Test**: 模拟一个 Alert 处理流程，检查是否生成了对应的 Issue Graph。
+- [√] **Persistence Test**: 重启服务，确认记忆是否丢失。
 
 ## 6. 风险 (Risks)
 - Beads 尚处于早期阶段，可能存在 Bug 或文档缺失。

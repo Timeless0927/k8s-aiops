@@ -13,6 +13,11 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: str | None =
     await websocket.accept()
     logger.info(f"WebSocket connected. Request Conversation ID: {conversation_id}")
     
+    # Register connection for global broadcasting (e.g. Alerts)
+    from app.services.connection_manager import manager
+    if conversation_id:
+        await manager.connect(websocket, conversation_id)
+    
     # DB Session per connection
     from app.db.session import AsyncSessionLocal
     from app.services.chat_history import ChatHistoryService
@@ -87,6 +92,8 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: str | None =
                     
         except WebSocketDisconnect:
             logger.info("WebSocket disconnected")
+            if conversation_id:
+                manager.disconnect(websocket, conversation_id)
         except Exception as e:
             logger.exception(f"WebSocket Error: {e}")
             try:

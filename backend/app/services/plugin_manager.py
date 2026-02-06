@@ -208,14 +208,40 @@ class PluginManager:
 
     async def delete_plugin_async(self, plugin_id: str):
         """Delete a user plugin."""
+        logger.info(f"Attempting to delete plugin: {plugin_id}")
+        
         if plugin_id in self.plugin_metadata and self.plugin_metadata[plugin_id].get("is_builtin"):
             raise ValueError("Cannot delete builtin plugins")
             
         target_path = os.path.join(self.user_path, plugin_id)
         if os.path.exists(target_path):
-            shutil.rmtree(target_path) # Sync IO
+            # 1. Try to unload from sys.modules
+            if plugin_id in sys.modules:
+                del sys.modules[plugin_id]
+                logger.info(f"Unloaded {plugin_id} from sys.modules")
+            
+            # 2. Define robust error handler for Windows
+            def on_rm_error(func, path, exc_info):
+                import stat
+                # Attempt to make writable
+                try:
+                    os.chmod(path, stat.S_IWRITE)
+                    func(path)
+                except Exception as e:
+                    logger.warning(f"Failed to force delete {path}: {e}")
+
+            # 3. Delete
+            try:
+                shutil.rmtree(target_path, onerror=on_rm_error)
+                logger.info(f"Deleted directory: {target_path}")
+            except Exception as e:
+                logger.error(f"shutil.rmtree failed: {e}")
+                raise ValueError(f"Failed to delete plugin files: {e}")
+
             await self.reload_all()
             return True
+            
+        logger.warning(f"Plugin path not found: {target_path}")
         return False
 
     def get_all_tools_schema(self):

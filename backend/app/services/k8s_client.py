@@ -26,8 +26,8 @@ class K8sClient:
                 logger.info("加载集群内配置 (In-Cluster Config)...")
                 config.load_incluster_config()
             else:
-                logger.info("加载本地配置 (Kubeconfig)...")
-                config.load_kube_config()
+                logger.info(f"加载本地配置 (Kubeconfig): {settings.KUBECONFIG}")
+                config.load_kube_config(config_file=settings.KUBECONFIG)
             self.connected = True
         except Exception as e:
             logger.warning(f"Cluster Connect Failed: {e}")
@@ -86,9 +86,11 @@ class K8sClient:
         from app.core.config import settings
 
         if settings.KUBE_IN_CLUSTER is False and settings.KUBECONFIG:
-            full_cmd = f"kubectl {command} --kubeconfig {settings.KUBECONFIG}"
+            clean_cmd = command.strip().strip('"').strip("'")
+            full_cmd = f"kubectl {clean_cmd} --kubeconfig {settings.KUBECONFIG}"
         else:
-            full_cmd = f"kubectl {command}"
+            clean_cmd = command.strip().strip('"').strip("'")
+            full_cmd = f"kubectl {clean_cmd}"
             
         logger.info(f"Executing CLI: {full_cmd}")
 
@@ -112,6 +114,21 @@ class K8sClient:
             return "Error: Command timed out."
         except Exception as e:
             return f"Error executing command: {str(e)}"
+
+    def check_connection(self) -> dict:
+        """
+        Active Health Check for K8s API
+        """
+        if not self.v1:
+             return {"connected": False, "error": "Client not initialized (Config load failed)"}
+        
+        try:
+            # Try a lightweight API call: List Namespaces
+            self.v1.list_namespace(limit=1, timeout_seconds=2)
+            return {"connected": True, "error": None}
+        except Exception as e:
+            logger.warning(f"K8s Connection Check Failed: {e}")
+            return {"connected": False, "error": str(e)}
 
 # 全局单例
 k8s_client = K8sClient()
