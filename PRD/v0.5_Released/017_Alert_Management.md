@@ -61,8 +61,8 @@ class Alert(Base):
     - 手动: 用户在 UI 点击 "Resolve"。
 
 ## 4. 交付清单
-- [ ] 后端 Model & Migration (`Alert`).
-- [ ] 后端 Service (`AlertService`).
-- [ ] API Endpoints (`/api/alerts`).
-- [ ] 前端 Page (`AlertsPage.tsx`).
-- [ ] 导航项更新 (`Sidebar.tsx`).
+- [x] 后端 Model & Migration (`Alert`).
+- [x] 后端 Service (`AlertService`).
+- [x] API Endpoints (`/api/alerts`).
+- [x] 前端 Page (`AlertsPage.tsx`).
+- [x] 导航项更新 (`Sidebar.tsx`).

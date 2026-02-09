@@ -1,4 +1,6 @@
 # 🧠 Brainstorm: Active Monitoring & Anomaly Detection
+> **Status**: Archived.
+> **Note**: This brainstorm document has been superseded by **[PRD-015: Active Monitoring](file:///e:/git/k8s-aiops/PRD/015_Active_Monitoring.md)**. Please refer to PRD-015 for the actual implementation details.
 
 ## Context
 我们已经完成了被动告警响应。现在的目标是实现 **主动巡检 ("Active Monitoring")**，让 Agent 定期检查集群健康，并预测潜在问题。

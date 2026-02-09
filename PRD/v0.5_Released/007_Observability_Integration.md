@@ -1,6 +1,7 @@
 # PRD-007: Observability Integration (Prometheus & Loki)
 
-> **目标**: 为 Agent 赋予 "视力"，使其能够实时查询 Prometheus 指标和 Loki 日志，从而支持更深层次的故障排查（不仅仅是静态配置错误）。
+> **Status**: Released
+> **Goal**: 为 Agent 赋予 "视力"，使其能够实时查询 Prometheus 指标和 Loki 日志，从而支持更深层次的故障排查（不仅仅是静态配置错误）。
 
 ## 1. 现状与问题
 当前 Agent 主要依赖 `kubectl` 和 `k8sgpt`。

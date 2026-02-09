@@ -1,5 +1,5 @@
 # PRD-014: UI/UX Pro Max Redesign
-> **Status**: Draft
+> **Status**: Released
 > **Goal**: Comprehensive visual overhaul to "High-End SaaS" standard (Linear/Vercel style).
 
 ## 1. Design Philosophy

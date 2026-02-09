@@ -1,6 +1,7 @@
-# PRD-008: Intelligent Architecture (File-Based Memory)
+# PRD-008: Intelligent Architecture (Memory & Reflection)
 
-> **目标**: 借鉴 OpenClaw 架构，为 Agent 实现一套轻量级、透明、易于维护的**文件系统记忆 (File-Based Memory)**，替代重型的 VectorDB。
+> **Status**: Released
+> **Goal**: 借鉴 OpenClaw 架构，为 Agent 实现一套轻量级、透明、易于维护的**文件系统记忆 (File-Based Memory)**，替代重型的 VectorDB。
 
 ## 1. 核心理念 (Philosophy)
 

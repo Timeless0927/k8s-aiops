@@ -1,6 +1,7 @@
-# PRD-009: Engineering Architecture Refinement
+# PRD-009: Engineering Architecture (Testing & CI/CD)
 
-> **目标**: 在引入更多复杂功能（Observability, Memory）之前，偿还技术债务，夯实工程基础，确保项目可维护性和扩展性。
+> **Status**: Released
+> **Goal**: 在引入更多复杂功能（Observability, Memory）之前，偿还技术债务，夯实工程基础，确保项目可维护性和扩展性。
 
 ## 1. 仓库治理 (Repository Hygiene)
 **现状**: 

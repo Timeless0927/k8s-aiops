@@ -1,6 +1,7 @@
-# PRD-003: WebSocket 流式对话实现方案 (已完成)
+# PRD-003: Streaming Chat & Real-time Feedback
 
-> **目标**: 将当前同步的 Chat API 升级为 WebSocket，以支持实时的 Token 流式传输和“思考过程”可视化。
+> **Status**: Released
+> **Goal**: 将当前同步的 Chat API 升级为 WebSocket，以支持实时的 Token 流式传输和“思考过程”可视化。
 > **状态**: **已上线/已验证**
 > **价值**: 提升用户体验 (降低首字延迟 TTFB)，让用户清晰看到 Agent 的工具执行步骤。
 

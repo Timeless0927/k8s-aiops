@@ -1,4 +1,5 @@
 # PRD 018: System Settings & Localization
+> **Status**: Released
 
 ## 1. Overview
 Enhance the "System Settings" module to support dynamic configuration of critical components (LLM, Monitoring, Notifications) without service restarts, and provide a localized (Chinese) user interface for better accessibility.

@@ -1,6 +1,8 @@
 # PRD-002: Backend Plugin Architecture & Implementation Plan
 
 > **Goal**: Refactor the current hardcoded Agent Tool system into a dynamic Plugin Architecture.
+> **Status**: Released
+> **Date**: 2026-01-28
 > **Scope**: Backend-only logic + Web UI for management.
 > **Key Feature**: Dynamic Upload (.zip/.py), Hot-swapping (Enable/Disable), Agent Tool Extension.
 

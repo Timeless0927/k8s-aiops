@@ -1,6 +1,6 @@
-# PRD-010: Grafana Deep Linking (Phase 7)
-
-> **目标**: 弃用自研的前端图表组件，改为在 Agent 回复中生成 **Grafana Explore Deep Links**。利用 Grafana 强大的原生能力进行可视化分析。
+# PRD-010: Dashboard & Deep Linking
+> **Status**: Released
+> **Goal**: Create a unified dashboard that combines Alert Management, Metric Visualization, and AI Diagnosis, with deep linking support for context preservation. 利用 Grafana 强大的原生能力进行可视化分析。
 
 ## 1. 背景 (Context)
 - **现状**: Agent 目前返回纯文本的指标 (Prometheus) 和日志 (Loki)。

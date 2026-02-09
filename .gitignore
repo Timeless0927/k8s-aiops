@@ -14,6 +14,8 @@ kubeconfig
 *.log
 *.db
 *.sqlite
+*.sqlite3
+config.yaml
 alembic.ini
 
 # Binaries
@@ -21,4 +23,5 @@ alembic.ini
 *.zip
 backend/k8sgpt.exe
 backend/k8sgpt
+backend/knowledge_base/
 backend/plugins/builtins/**/bin/

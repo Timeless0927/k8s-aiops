@@ -1,5 +1,5 @@
-# PRD-006: LangGraph Reasoning Agent (逻辑增强)
-
+# PRD-006: LangGraph Agent Integration
+> **Status**: Released
 > **目标**: 引入 `LangGraph` 框架，替换当前基于 `while` 循环的简易 ReAct 模式，实现更复杂的任务编排和状态管理。
 > **价值**: 提升复杂故障排查能力，支持子任务拆解、人机回环 (Human-in-the-loop) 和更稳定的工具调用。
 

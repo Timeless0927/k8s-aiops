@@ -1,4 +1,5 @@
-# 前端对话历史管理 (Frontend Chat History Management)
+# PRD-005: Frontend Chat History
+> **Status**: Released
 
 ## 1. 概述
 本文档描述了前端如何管理对话历史，包括持久化存储、WebSocket 同步和状态管理。

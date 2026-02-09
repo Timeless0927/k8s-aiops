@@ -1,4 +1,6 @@
-# PRD: 双层记忆系统架构 (Dual-Layer Memory Architecture)
+# PRD-Memory: Dual-Layer Memory Architecture
+> **Status**: Released
+> **Goal**: 构建一个类人的记忆系统，结合短期工作记忆 (Beads) 和长期语义记忆 (ChromaDB)。
 
 ## 1. 愿景 (Vision)
 构建一个类人的记忆系统，结合 **短期工作记忆 (Working Memory)** 和 **长期语义记忆 (Long-term Bio)**。

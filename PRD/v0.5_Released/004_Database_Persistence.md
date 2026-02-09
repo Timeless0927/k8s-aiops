@@ -1,6 +1,7 @@
-# PRD-004: Database Persistence (数据持久化) [已完成]
+# PRD-004: Database Persistence & History
 
-> **目标**: 引入轻量级数据库 (SQLite) 以替代当前的内存存储，实现核心数据的持久化。
+> **Status**: Released
+> **Goal**: 引入轻量级数据库 (SQLite) 以替代当前的内存存储，实现核心数据的持久化。
 > **范围**: 后端 (`SQLAlchemy` + `SQLite`)。
 > **价值**: 重启服务后不丢失对话记录、插件状态及告警历史。
 
