@@ -25,7 +25,17 @@ class PluginManager:
             # Default paths
             cls._instance.base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../plugins"))
             cls._instance.builtins_path = os.path.join(cls._instance.base_path, "builtins")
-            cls._instance.user_path = os.path.join(cls._instance.base_path, "user_uploads")
+            
+            # User uploads path - Configurable for persistence
+            default_user_path = os.path.join(cls._instance.base_path, "user_uploads")
+            cls._instance.user_path = os.getenv("USER_PLUGIN_PATH", default_user_path)
+            
+            # Ensure directory exists if using custom path
+            if not os.path.exists(cls._instance.user_path):
+                try:
+                    os.makedirs(cls._instance.user_path)
+                except OSError:
+                    pass # Might be read-only or handled later
         return cls._instance
 
     async def initialize(self):

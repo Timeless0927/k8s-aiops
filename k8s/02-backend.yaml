@@ -7,7 +7,7 @@ metadata:
     app: aiops
     component: backend
 spec:
-  replicas: 2  # Production ready
+  replicas: 1  # Production ready
   selector:
     matchLabels:
       app: aiops
@@ -38,21 +38,8 @@ spec:
               value: "sqlite+aiosqlite:////data/app.db"
             - name: KNOWLEDGE_BASE_PATH
               value: "/data/knowledge_base/chroma_db"
-            - name: PROMETHEUS_URL
-              value: "http://prometheus-server.monitoring.svc.cluster.local"
-            - name: LOKI_URL
-              value: "http://loki.monitoring.svc.cluster.local:3100"
-            - name: OPENAI_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: aiops-secrets
-                  key: openai-api-key
-            - name: OPENAI_BASE_URL
-              value: "https://apis.iflow.cn/v1"
-            - name: MODEL_NAME
-              value: "qwen3-coder-plus"
-            - name: GRAFANA_URL
-              value: "http://grafana.5gfusion.com/"
+            - name: USER_PLUGIN_PATH
+              value: "/data/user_plugins"
             - name: BACKEND_CORS_ORIGINS
               value: "*"
           volumeMounts:
