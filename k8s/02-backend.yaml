@@ -27,12 +27,17 @@ spec:
             - containerPort: 8000
               name: http
           env:
+          env:
             - name: ENV
               value: "production"
             - name: KUBE_IN_CLUSTER
               value: "True"
             - name: LOG_LEVEL
               value: "INFO"
+            - name: DATABASE_URL
+              value: "sqlite+aiosqlite:////data/app.db"
+            - name: KNOWLEDGE_BASE_PATH
+              value: "/data/knowledge_base/chroma_db"
             - name: PROMETHEUS_URL
               value: "http://prometheus-server.monitoring.svc.cluster.local"
             - name: LOKI_URL
@@ -41,23 +46,24 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: aiops-secrets
-                secretKeyRef:
-                  name: aiops-secrets
                   key: openai-api-key
             - name: OPENAI_BASE_URL
               value: "https://apis.iflow.cn/v1"
             - name: MODEL_NAME
               value: "qwen3-coder-plus"
             - name: GRAFANA_URL
-              value: "http://grafana.5gfusion.com/" # Optional: For frontend links
+              value: "http://grafana.5gfusion.com/"
             - name: BACKEND_CORS_ORIGINS
-              value: "*" # Safe behind Nginx Reverse Proxy
+              value: "*"
+          volumeMounts:
+            - name: aiops-data
+              mountPath: /data
           livenessProbe:
             exec:
               command:
                 - python
                 - -c
-                - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+                - "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/system/status')"
             initialDelaySeconds: 15
             periodSeconds: 20
           readinessProbe:
@@ -73,6 +79,23 @@ spec:
             limits:
               cpu: "1000m"
               memory: "1Gi"
+              memory: "1Gi"
+      volumes:
+        - name: aiops-data
+          persistentVolumeClaim:
+            claimName: aiops-data-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: aiops-data-pvc
+  namespace: aiops-system
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
 ---
 apiVersion: v1
 kind: Service

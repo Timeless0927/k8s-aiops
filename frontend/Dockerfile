@@ -1,30 +1,26 @@
-# Stage 1: Build
+# Build Stage
 FROM node:18-alpine as builder
 
 WORKDIR /app
 
-# Copy package.json only for caching
-# Copy package.json only for caching
-COPY package*.json ./
-# 切换国内淘宝源 (修复网络问题)
-RUN npm config set registry https://registry.npmmirror.com
+# Install dependencies
+COPY package.json package-lock.json ./
 RUN npm ci
 
-# Copy source code
+# Copy source
 COPY . .
 
 # Build
 RUN npm run build
 
-# Stage 2: Serve
+# Production Stage
 FROM nginx:alpine
 
-# Copy built assets
+# Copy build artifacts
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy nginx config (optional, using default for now)
-# Copy nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy custom nginx config if needed (optional)
+# COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 

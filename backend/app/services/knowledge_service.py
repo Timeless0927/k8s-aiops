@@ -30,11 +30,13 @@ class KnowledgeService:
     def _init_db(self):
         """Initialize ChromaDB client and collection."""
         try:
-            self.db_path = os.path.join(
+            # Allow override via ENV, else use default relative path
+            default_path = os.path.join(
                 os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
                 "knowledge_base", 
                 "chroma_db"
             )
+            self.db_path = os.getenv("KNOWLEDGE_BASE_PATH", default_path)
             
             if not os.path.exists(self.db_path):
                 os.makedirs(self.db_path)
