@@ -5,7 +5,11 @@ import os
 import tempfile
 from pydantic import BaseModel
 
+from app.db.models.automation import AutomationHistory
+from app.api.endpoints import automation
+
 router = APIRouter()
+router.include_router(automation.router, prefix="/automation", tags=["automation"])
 
 class ToggleRequest(BaseModel):
     active: bool

@@ -15,6 +15,12 @@ async def receive_alert(payload: AlertmanagerPayload):
     Receive webhook from Prometheus Alertmanager.
     """
     try:
+        # Lazy Start Worker
+        if not alert_queue.is_running:
+             import asyncio
+             asyncio.create_task(alert_queue.process_queue())
+             logger.info("Started AlertQueueService worker lazily.")
+
         logger.info(f"Received webhook from Alertmanager: {len(payload.alerts)} alerts")
         await alert_queue.enqueue(payload)
         return {"status": "queued", "alert_count": len(payload.alerts)}

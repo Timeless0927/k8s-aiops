@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { settingsApi, SystemSetting } from '../../../api/settings';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronRight, Activity, MessageSquare, Bell, Cpu, Settings as SettingsIcon, Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react';
+import AutomationLogs from '../../AutomationLogs';
 
 // Translation Maps
 const KEY_LABELS: Record<string, string> = {
@@ -153,6 +154,11 @@ const CategorySection: React.FC<{
                                     isSaving={savingKey === s.key}
                                 />
                             ))}
+
+                            {/* Automation Logs Table */}
+                            {category === 'automation' && (
+                                <AutomationLogs />
+                            )}
                         </div>
                     </motion.div>
                 )}

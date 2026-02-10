@@ -16,7 +16,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'
 from app.core.config import settings
 from app.db.base import Base
 # Import all models to ensure they are registered in metadata
-from app.db.models import chat, plugin, alert
+from app.db.models import chat, plugin, alert, automation
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

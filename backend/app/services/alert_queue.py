@@ -102,9 +102,13 @@ class AlertQueueService:
     - 如果 Pod 存在，仅排查该 Pod。
     - **关键**: 如果 Pod 已销毁/不存在，**允许**查找其所属的 Controller (Deployment/StatefulSet) 或同名的新 Pod。
     - **严禁**: 严禁扫描其他 Namespace，严禁排查与该应用无关的资源。
-2. **Tools**: 自行决定使用哪些工具 (LogQL, Kubectl, PromQL 等)。
-3. **Language**: 必须使用中文回答。
-4. **Memory (自我进化)**: 查明原因后，**必须**调用 `save_insight`。参数要求：
+2. **Environment (OS)**: **当前环境是 Windows**。
+    - **严禁使用** `grep`, `awk`, `sed`, `head`, `tail` 等 Linux 专用命令。
+    - **必须使用** `findstr` (替代 grep) 或 PowerShell 语法。
+    - 推荐：尽量直接使用 `kubectl` 的 `--field-selector` 或 JSONPath，减少对 Shell 管道的依赖。
+3. **Tools**: 自行决定使用哪些工具 (LogQL, Kubectl, PromQL 等)。
+4. **Language**: 必须使用中文回答。
+5. **Memory (自我进化)**: 查明原因后，**必须**调用 `save_insight`。参数要求：
     - `topic`: 简短概括 (如 "Fix OOM for App X")
     - `content`: 详细修复步骤
     - `symptoms`: 现象 (如 "CPU > 400%")
@@ -193,7 +197,30 @@ class AlertQueueService:
                 )
                 logger.info(f"✅ Investigation Complete for {conversation_id}")
 
-                # 6. Notify (DingTalk)
+                # 6. Automated Remediation (The Doctor)
+                from app.services.policy_engine import PolicyEngine
+                from app.services.action_executor import ActionExecutor
+                
+                policy_engine = PolicyEngine()
+                action_executor = ActionExecutor()
+                
+                logger.info("🩺 Running Policy Engine...")
+                remediation_plan = policy_engine.evaluate(payload)
+                
+                remediation_status = "Skipped (No Policy Match)"
+                if remediation_plan:
+                    logger.info(f"💊 Remediation Plan Found: {remediation_plan}")
+                    # Execute
+                    success = await action_executor.execute(remediation_plan)
+                    remediation_status = "✅ Executed Successfully" if success else "❌ Execution Failed / Blocked"
+                    
+                    if success:
+                         # Append to report
+                         result += f"\n\n**⚡ 自动修复已被触发**:\n- 动作: `{remediation_plan['action']}`\n- 目标: `{remediation_plan['target']}`\n- 结果: 成功"
+                else:
+                    logger.info("Policy Engine returned no action.")
+
+                # 7. Notify (DingTalk)
                 from app.services.notifier import notifier
                 
                 report = f"""## 🚨 故障告警: {alert_name}
@@ -205,7 +232,10 @@ class AlertQueueService:
 ### 🤖 AI 侦探调查报告
 (Conversation ID: {conversation_id})
 
-✅ 调查已完成。由于篇幅限制，请点击下方链接查看完整诊断过程与建议。
+✅ 调查已完成。
+**自动修复状态**: {remediation_status}
+
+由于篇幅限制，请点击下方链接查看完整诊断过程与建议。
 
 > [查看详情](http://localhost:5173/chat?id={conversation_id})
 """
