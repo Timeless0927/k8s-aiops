@@ -18,12 +18,14 @@ class LLMConfigManager:
     @classmethod
     def get_config(cls) -> LLMConfig:
         if cls._instance is None:
+            logger.info("LLMConfigManager: Instance is None, falling back to ENV.")
             # Fallback to env if not initialized
             return LLMConfig(
                 api_key=env_settings.OPENAI_API_KEY,
                 base_url=env_settings.OPENAI_BASE_URL,
                 model_name=env_settings.MODEL_NAME
             )
+        # logger.info(f"LLMConfigManager: Returning cached config. Key starts with: {cls._instance.api_key[:5] if cls._instance.api_key else 'None'}")
         return cls._instance
 
     @classmethod
@@ -44,6 +46,6 @@ class LLMConfigManager:
                 base_url=base_url,
                 model_name=model_name
             )
-            logger.info(f"LLM Config Reloaded. Model: {model_name}")
+            logger.info(f"LLM Config Reloaded. Model: {model_name}, Key: {api_key[:10] if api_key else 'None'}...")
         except Exception as e:
             logger.error(f"Failed to reload LLM config: {e}")

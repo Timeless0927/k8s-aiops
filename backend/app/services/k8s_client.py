@@ -77,11 +77,11 @@ class K8sClient:
         Executes a kubectl command securely via subprocess
         """
         import subprocess
-        import shlex
-
-        # Security Note: In production, strictly validate 'command' to prevent injection.
-        # For this MVP, we assume the Agent is trusted.
         
+        # Guard against None command
+        if not command:
+            return "Error: Command cannot be empty."
+
         import os
         from app.core.config import settings
 
@@ -95,21 +95,23 @@ class K8sClient:
         logger.info(f"Executing CLI: {full_cmd}")
 
         try:
-            # shell=True is used here for Windows compatibility with basic command parsing
-            # In Linux production, use shlex.split(full_cmd) and shell=False
+            # shell=True for Windows compatibility
             result = subprocess.run(
                 full_cmd, 
                 shell=True, 
                 capture_output=True, 
-                text=True, 
+                encoding='utf-8',
+                errors='replace',
                 timeout=30,
-                # env=env # Not needed if using CLI arg
             )
             
-            if result.returncode != 0:
-                return f"Error ({result.returncode}): {result.stderr.strip()}"
+            stdout_str = result.stdout.strip() if result.stdout else ""
+            stderr_str = result.stderr.strip() if result.stderr else ""
             
-            return result.stdout.strip() or "Success (No Output)"
+            if result.returncode != 0:
+                return f"Error ({result.returncode}): {stderr_str}"
+            
+            return stdout_str or "Success (No Output)"
         except subprocess.TimeoutExpired:
             return "Error: Command timed out."
         except Exception as e:

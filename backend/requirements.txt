@@ -1,5 +1,6 @@
 fastapi>=0.109.0
-uvicorn[standard]>=0.27.0# AI & LLM
+langextract>=0.0.1
+uvicorn[standard]>=0.27.0
 openai>=1.0.0
 # Memory
 beads-project>=0.1.0

@@ -36,22 +36,42 @@ function App() {
         localStorage.setItem("activeConversationId", newId);
     }, []);
 
-    const { messages, setMessages, sendMessage, status, currentTool, streamingContent } = useChatWebSocket(currentConversationId, onConversationInit);
+    const { messages, setMessages, sendMessage, stopGeneration, status, currentTool, streamingContent } = useChatWebSocket(currentConversationId, onConversationInit);
 
     // Fetch conversation history when ID changes
     useEffect(() => {
+        console.log("App: conversationId changed to:", currentConversationId);
         if (!currentConversationId) {
+            console.log("App: No ID, clearing messages.");
             setMessages([]);
             return;
         }
 
+        // Clear existing messages immediately to avoid showing stale data during fetch
+        setMessages([]);
+
         const fetchHistory = async () => {
+            console.log(`App: Fetching history for ${currentConversationId}...`);
             try {
                 const res = await fetch(`/api/conversations/${currentConversationId}/messages`);
                 if (res.ok) {
                     const data = await res.json();
-                    setMessages(data);
+                    console.log(`App: History loaded. Count: ${data.length}`);
+
+                    // Post-process history to recover "Thought" state (Heuristic)
+                    const processed = data.map((msg: any, idx: number) => {
+                        if (msg.role !== 'assistant') return msg;
+                        const nextMsg = data[idx + 1];
+                        // Heuristic: If followed by Tool or another Assistant, it is likely a Thought/Reasoning step
+                        if (nextMsg && (nextMsg.role === 'tool' || nextMsg.role === 'assistant')) {
+                            return { ...msg, isThought: true };
+                        }
+                        return msg;
+                    });
+
+                    setMessages(processed);
                 } else {
+                    console.warn(`App: Fetch failed with status ${res.status}`);
                     if (res.status === 404) {
                         console.warn("Conversation not found, resetting state.");
                         setCurrentConversationId(null);
@@ -207,6 +227,7 @@ function App() {
                                 input={input}
                                 setInput={setInput}
                                 handleSend={handleSend}
+                                stopGeneration={stopGeneration}
                                 status={status}
                             />
                         </>

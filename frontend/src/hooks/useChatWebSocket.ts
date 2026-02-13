@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 export interface Message {
     role: 'user' | 'assistant' | 'system' | 'tool';
     content: string;
+    isThought?: boolean;
 }
 
 export interface ToolState {
@@ -19,7 +20,14 @@ export const useChatWebSocket = (conversationId: string | null, onConversationIn
     const [streamingContent, setStreamingContent] = useState<string>("");
 
     const wsRef = useRef<WebSocket | null>(null);
-    const contentRef = useRef<string>(""); // Use ref to track content inside callback
+    const contentRef = useRef<string>("");
+    // Reset state when conversation ID changes
+    useEffect(() => {
+        setMessages([]);
+        setStreamingContent("");
+        setCurrentTool(null);
+        setStatus('idle');
+    }, [conversationId]);
 
     const connect = useCallback(() => {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -61,7 +69,8 @@ export const useChatWebSocket = (conversationId: string | null, onConversationIn
                         // 1. Commit pending thought/text if any
                         if (contentRef.current) {
                             const thought = contentRef.current;
-                            setMessages(prev => [...prev, { role: 'assistant', content: thought }]);
+                            // Mark as thought since it precedes a tool call
+                            setMessages(prev => [...prev, { role: 'assistant', content: thought, isThought: true }]);
                             contentRef.current = "";
                             setStreamingContent("");
                         }
@@ -102,7 +111,7 @@ export const useChatWebSocket = (conversationId: string | null, onConversationIn
                             console.log("Appending FINAL message:", finalContent.substring(0, 50));
                             setMessages(prev => {
                                 console.log("Previous messages count:", prev.length);
-                                return [...prev, { role: 'assistant', content: finalContent }];
+                                return [...prev, { role: 'assistant', content: finalContent, isThought: false }];
                             });
                         }
                         contentRef.current = "";
@@ -122,14 +131,21 @@ export const useChatWebSocket = (conversationId: string | null, onConversationIn
 
         ws.onclose = (event) => {
             console.log(`WS Closed: code=${event.code}, reason=${event.reason}`);
-            // If we have pending content when closed, save it
+
+            // Ignore normal closures (1000: Normal, 1005: No Status Recvd)
+            if (event.code === 1000 || event.code === 1005) {
+                setStatus('idle');
+                return;
+            }
+
+            // If we have pending content when abnormally closed, save it
             if (contentRef.current) {
                 console.log("Committing interrupted message:", contentRef.current);
-                setMessages(prev => [...prev, { role: 'assistant', content: contentRef.current + " [Connection Closed]" }]);
+                setMessages(prev => [...prev, { role: 'assistant', content: contentRef.current + "\n\n[连接异常断开]" }]);
                 contentRef.current = "";
                 setStreamingContent("");
             }
-            setStatus('idle');
+            setStatus('error');
         };
 
         wsRef.current = ws;
@@ -168,5 +184,14 @@ export const useChatWebSocket = (conversationId: string | null, onConversationIn
         wsRef.current.send(JSON.stringify(payload));
     }, [messages, connect]); // Added connect to deps
 
-    return { messages, setMessages, sendMessage, status, currentTool, streamingContent };
+    const stopGeneration = useCallback(() => {
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: "stop" }));
+            // We don't manually set status here, we wait for backend to close/confirm
+            // OR we can force it for UI responsiveness
+            // setStatus('connected'); 
+        }
+    }, []);
+
+    return { messages, setMessages, sendMessage, stopGeneration, status, currentTool, streamingContent };
 };

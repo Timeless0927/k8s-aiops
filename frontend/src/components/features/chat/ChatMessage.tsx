@@ -1,11 +1,12 @@
 import React from 'react';
-import { Shield, User } from 'lucide-react';
+import { Shield, User, BrainCircuit, ChevronDown } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { ErrorBoundary } from '../../common/ErrorBoundary';
 
 interface Message {
     role: string;
     content: string;
+    isThought?: boolean;
 }
 
 interface ChatMessageProps {
@@ -14,6 +15,24 @@ interface ChatMessageProps {
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({ msg }) => {
     const isUser = msg.role === 'user';
+    const isThought = msg.isThought;
+
+    if (isThought) {
+        return (
+            <div className="max-w-4xl mx-auto pl-12 pr-4 mb-2 animate-in fade-in">
+                <details className="group">
+                    <summary className="flex items-center gap-2 text-xs font-medium text-gray-400 cursor-pointer hover:text-primary list-none select-none">
+                        <BrainCircuit size={14} />
+                        <span>思考过程</span>
+                        <ChevronDown size={14} className="group-open:rotate-180 transition-transform" />
+                    </summary>
+                    <div className="mt-2 text-sm text-gray-500 bg-gray-50/50 p-3 rounded-lg border border-gray-100 font-mono text-[13px] leading-relaxed whitespace-pre-wrap break-words">
+                        {msg.content}
+                    </div>
+                </details>
+            </div>
+        );
+    }
 
     return (
         <div className={`flex gap-4 max-w-4xl mx-auto animate-in slide-in-from-bottom-2 duration-300 ${isUser ? 'ml-auto flex-row-reverse' : ''}`}>

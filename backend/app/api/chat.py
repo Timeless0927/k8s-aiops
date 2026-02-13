@@ -96,17 +96,31 @@ async def chat_endpoint(request: ChatRequest):
         # History prep
         messages = [{"role": m.role, "content": m.content} for m in request.messages]
         
-        headers = {
-            "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
-            "Content-Type": "application/json"
-        }
-        url = f"{settings.OPENAI_BASE_URL}/chat/completions"
+        # Use LLMConfigManager for unified config source (DB > Env)
+        from app.core.llm_config import LLMConfigManager
+        llm_config = LLMConfigManager.get_config()
         
-        async with httpx.AsyncClient() as client:
-            # System Prompt for Anti-Hallucination & Tool Use
-            system_prompt = {
-                "role": "system",
-                "content": """
+        api_key = llm_config.api_key
+        base_url = llm_config.base_url
+        model_name = request.model or llm_config.model_name
+        
+        if not api_key:
+            raise HTTPException(status_code=500, detail="OpenAI API Key not configured in System Settings.")
+
+        if not api_key:
+            raise HTTPException(status_code=500, detail="OpenAI API Key not configured in System Settings.")
+
+        from openai import AsyncOpenAI
+        
+        aclient = AsyncOpenAI(
+            api_key=api_key,
+            base_url=base_url
+        )
+            
+        # System Prompt for Anti-Hallucination & Tool Use
+        system_prompt = {
+            "role": "system",
+            "content": """
 You are a Kubernetes AIOps Agent specialized in troubleshooting.
 CRITICAL RULES:
 1. FACTUALITY: Do NOT invent, guess, or hallucinate labels, pod names, or error messages.
@@ -116,94 +130,107 @@ CRITICAL RULES:
 5. DIAGNOSTICS: If the user asks to "scan", "diagnose", or "check health", use `run_k8sgpt`. It returns raw JSON findings. You must ANALYZE this JSON and explain the issues to the user in simple terms. Do not just dump the JSON.
 6. VERIFICATION: After taking ANY action (delete pod, restart deployment, etc.), you MUST run `run_kubectl` again to check the new status. Do NOT assume it worked. Do NOT invent a new pod name. Fetch it.
 """
-            }
-            
-            # Prepend System Prompt
-            if messages[0]["role"] != "system":
-                messages.insert(0, system_prompt)
+        }
+        
+        # Prepend System Prompt
+        if messages[0]["role"] != "system":
+            messages.insert(0, system_prompt)
 
-            # --- Agentic ReAct Loop ---
-            MAX_ITERATIONS = 10
-            iteration = 0
-            
-            while iteration < MAX_ITERATIONS:
-                iteration += 1
-                logger.info(f"--- Iteration {iteration} of {MAX_ITERATIONS} ---")
+        # --- Agentic ReAct Loop ---
+        MAX_ITERATIONS = 10
+        iteration = 0
+        
+        while iteration < MAX_ITERATIONS:
+            iteration += 1
+            logger.info(f"--- Iteration {iteration} of {MAX_ITERATIONS} ---")
 
-                payload = {
-                    "model": request.model or settings.MODEL_NAME,
-                    "messages": messages,
-                    "temperature": 0.1, 
-                    "tools": current_tools_schema,
-                    "tool_choice": "auto"
+            try:
+                resp = await aclient.chat.completions.create(
+                    model=model_name,
+                    messages=messages,
+                    temperature=0.1,
+                    tools=current_tools_schema,
+                    tool_choice="auto"
+                )
+            except Exception as e:
+                logger.error(f"OpenAI API call failed: {e}")
+                raise HTTPException(status_code=500, detail=f"LLM Provider Error: {str(e)}")
+
+            logger.debug(f"OpenAI raw response: {resp}")
+            
+            if not resp.choices:
+                logger.error(f"Response has no choices: {resp}")
+                raise HTTPException(status_code=500, detail="LLM returned no choices.")
+                
+            msg_obj = resp.choices[0].message
+            
+            # Convert to dict for history
+            if msg_obj.tool_calls:
+                msg = {
+                    "role": "assistant",
+                    "content": msg_obj.content,
+                    "tool_calls": [
+                        {
+                            "id": tc.id,
+                            "type": tc.type,
+                            "function": {
+                                "name": tc.function.name,
+                                "arguments": tc.function.arguments
+                            }
+                        } for tc in msg_obj.tool_calls
+                    ]
                 }
+            else:
+                msg = {"role": "assistant", "content": msg_obj.content}
+
+            logger.debug(f"Assistant message: {msg}")
+            messages.append(msg)
+            
+            # Check for Tool Calls
+            tool_calls = msg.get("tool_calls")
+            
+            if not tool_calls:
+                # No tools called -> Final Answer
+                logger.info("Agent decided to stop (no tool calls).")
+                content = msg.get("content")
+                if not content: content = "Empty response."
+                return ChatResponse(response=content)
+            
+            # Execute Tools and Keep Looping
+            for tool_call in tool_calls:
+                func_name = tool_call["function"]["name"]
+                raw_args = tool_call["function"]["arguments"]
+                call_id = tool_call["id"]
                 
-                resp = await client.post(url, json=payload, headers=headers, timeout=60.0)
-                if resp.status_code != 200:
-                    raise HTTPException(status_code=resp.status_code, detail=resp.text)
-                    
-                resp_data = resp.json()
-                choice = resp_data["choices"][0]
+                logger.info(f"Agent executing tool: {func_name}({raw_args})")
                 
-                # Robust parsing
-                if isinstance(choice, str):
-                     msg = {"content": choice, "role": "assistant"}
-                elif isinstance(choice, dict):
-                     msg = choice.get("message", {})
-                     if isinstance(msg, str): msg = {"content": msg, "role": "assistant"}
+                if func_name in current_tools_registry:
+                    try:
+                        # Handle potential JSON parsing errors in arguments
+                        args = json.loads(raw_args)
+                        result_str = current_tools_registry[func_name](**args)
+                    except json.JSONDecodeError:
+                            result_str = f"Error: Invalid JSON arguments: {raw_args}"
+                    except Exception as e:
+                        logger.exception(f"Tool execution failed: {e}")
+                        result_str = f"Error executing {func_name}: {str(e)}"
                 else:
-                     msg = {"content": str(choice), "role": "assistant"}
-                
-                # Append Assistant Message to History
-                messages.append(msg)
-                
-                # Check for Tool Calls
-                tool_calls = msg.get("tool_calls")
-                
-                if not tool_calls:
-                    # No tools called -> Final Answer
-                    logger.info("Agent decided to stop (no tool calls).")
-                    content = msg.get("content")
-                    if not content: content = "Empty response."
-                    return ChatResponse(response=content)
-                
-                # Execute Tools and Keep Looping
-                for tool_call in tool_calls:
-                    func_name = tool_call["function"]["name"]
-                    raw_args = tool_call["function"]["arguments"]
-                    call_id = tool_call["id"]
-                    
-                    logger.info(f"Agent executing tool: {func_name}({raw_args})")
-                    
-                    if func_name in current_tools_registry:
-                        try:
-                            # Handle potential JSON parsing errors in arguments
-                            args = json.loads(raw_args)
-                            result_str = current_tools_registry[func_name](**args)
-                        except json.JSONDecodeError:
-                             result_str = f"Error: Invalid JSON arguments: {raw_args}"
-                        except Exception as e:
-                            logger.exception(f"Tool execution failed: {e}")
-                            result_str = f"Error executing {func_name}: {str(e)}"
-                    else:
-                        result_str = f"Error: Tool {func_name} not found."
+                    result_str = f"Error: Tool {func_name} not found."
 
-                    # Append Result
-                    # Truncate if huge (e.g. k8sgpt full json might be big)
-                    # We'll allow it for now, assuming local model context is sufficient
-                    
-                    messages.append({
-                        "role": "tool",
-                        "content": result_str,
-                        "tool_call_id": call_id
-                    })
-                
-                # Loop continues... sends (User + Assistant + ToolResults) back to LLM
+                messages.append({
+                    "role": "tool",
+                    "content": result_str,
+                    "tool_call_id": call_id
+                })
+            
+            # Loop continues... sends (User + Assistant + ToolResults) back to LLM
 
-            # If loop limits reached
-            logger.warning(f"Max iterations {MAX_ITERATIONS} reached.")
-            return ChatResponse(response="I'm sorry, I reached my maximum thinking steps before finding a final answer.")
+        # If loop limits reached
+        logger.warning(f"Max iterations {MAX_ITERATIONS} reached.")
+        return ChatResponse(response="I'm sorry, I reached my maximum thinking steps before finding a final answer.")
 
+    except HTTPException as he:
+        raise he
     except Exception as e:
         logger.exception(f"Chat failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")

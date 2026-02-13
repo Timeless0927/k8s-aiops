@@ -6,12 +6,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
-async def run_agent_graph(websocket, conversation_id: str, last_user_message: str, session: AsyncSession = None, conversation_type: str = "chat"):
+async def run_agent_graph(stream_handler, conversation_id: str, last_user_message: str, session: AsyncSession = None, conversation_type: str = "chat"):
     """
-    Executes the LangGraph agent and streams results to WebSocket.
+    Executes the LangGraph agent and streams results via StreamHandler.
     Uses provided session or creates a new one.
     """
     from app.agent.graph.graph import graph
+    import asyncio
     
     # helper for session management
     class SessionContext:
@@ -71,7 +72,7 @@ async def run_agent_graph(websocket, conversation_id: str, last_user_message: st
              "3. SYNTAX: Use correct JSON/YAML flags for kubectl.",
              "4. RESPONSE FIRST: When using a tool (especially k8sgpt or scanners), ALWAYS start your response with a short sentence confirming the action (e.g., 'I will scan the default namespace now...') BEFORE calling the tool. Do NOT stay silent."
         ]
-
+        
         if "kubectl_plugin" in active_plugins:
             rules.append("4. EVIDENCE: Run `run_kubectl` to verify facts.")
         
@@ -166,101 +167,115 @@ async def run_agent_graph(websocket, conversation_id: str, last_user_message: st
         
         logger.info(f"Starting Graph Execution for Conversation {conversation_id}")
         
-        async for event in graph.astream_events(inputs, version="v1"):
-            kind = event["event"]
-            name = event["name"]
-            data = event["data"]
-            
-            # 1. Token Stream
-            if kind == "on_chat_model_stream":
-                chunk = data.get("chunk")
-                if chunk and chunk.content:
-                    await websocket.send_json({"type": "token", "content": chunk.content})
-            
-            # 2. Assistant Message Complete
-            elif kind == "on_chat_model_end":
-                output = data.get("output")
-                
-                # Check for AIMessage (relaxed check)
-                content = ""
-                is_valid_msg = False
-                
-                if hasattr(output, "content") and output.content:
-                    content = output.content
-                    is_valid_msg = True
-                elif isinstance(output, str):
-                    content = output
-                    is_valid_msg = True
-                
-                if is_valid_msg:
-                     # Serialize Tool Calls if present
-                     tool_calls_data = []
-                     if hasattr(output, "tool_calls") and output.tool_calls:
-                         tool_calls_data = output.tool_calls
-                         
-                     # Construct persistable content
-                     # If we have tool calls, we MUST save them to restore state later.
-                     # Format: <Visible Content>\n:::TOOL_CALLS:::<JSON>
-                     persist_content = content
-                     if tool_calls_data:
-                         if not persist_content:
-                             # Add a placeholder for UI visibility
-                             persist_content = "🤖 [Thinking/Tool Use]"
-                         
-                         import json
-                         json_calls = json.dumps(tool_calls_data)
-                         persist_content += f"\n:::TOOL_CALLS:::{json_calls}"
-                     
-                     try:
-                        saved_msg = await ChatHistoryService.add_message(db_session, conversation_id, "assistant", persist_content)
-                     except Exception as e:
-                        logger.error(f"Persist Fail: {e}")
-                
-                # Notify Tool Starts
-                if hasattr(output, "tool_calls") and output.tool_calls:
-                    for tc in output.tool_calls:
-                        await websocket.send_json({
-                            "type": "tool_start",
-                            "tool": tc["name"],
-                            "args": json.dumps(tc["args"]) 
-                        })
+        try:
+            async for event in graph.astream_events(inputs, version="v1"):
+                # Check cancellation (Polite check)
+                # if asyncio.current_task() and asyncio.current_task().cancelled():
+                #    raise asyncio.CancelledError()
 
-            # 3. Agent Node Complete (Failsafe)
-            elif kind == "on_chain_end" and name == "agent":
-                node_output = data.get("output")
-                if node_output and "messages" in node_output:
-                    for msg in node_output["messages"]:
-                        # Check for AIMessage (relaxed check)
-                        if hasattr(msg, "content") and msg.content and getattr(msg, "type", "") == "ai":
-                             try:
-                                # Deduplicate? ChatHistoryService logic helps?
-                                # Ideally we rely on ID, but we generate new ID.
-                                # Simple check: Was the last message same content?
-                                # For now, just append.
-                                await ChatHistoryService.add_message(db_session, conversation_id, "assistant", msg.content)
-                             except Exception as e:
-                                pass
-
-            # 4. Tool Execution Complete
-            elif kind == "on_chain_end" and name == "tools":
-                node_output = data.get("output")
-                if node_output and "messages" in node_output:
-                    for msg in node_output["messages"]:
-                        if isinstance(msg, ToolMessage):
-                            await websocket.send_json({
-                                "type": "tool_result",
-                                "output": msg.content
+                kind = event["event"]
+                name = event["name"]
+                data = event["data"]
+                
+                # 1. Token Stream
+                if kind == "on_chat_model_stream":
+                    chunk = data.get("chunk")
+                    if chunk and chunk.content:
+                        await stream_handler.send({"type": "token", "content": chunk.content})
+                
+                # 2. Assistant Message Complete
+                elif kind == "on_chat_model_end":
+                    output = data.get("output")
+                    
+                    # Check for AIMessage (relaxed check)
+                    content = ""
+                    is_valid_msg = False
+                    
+                    if hasattr(output, "content") and output.content:
+                        content = output.content
+                        is_valid_msg = True
+                    elif isinstance(output, str):
+                        content = output
+                        is_valid_msg = True
+                    
+                    if is_valid_msg:
+                         # Serialize Tool Calls if present
+                         tool_calls_data = []
+                         if hasattr(output, "tool_calls") and output.tool_calls:
+                             tool_calls_data = output.tool_calls
+                             
+                         # Construct persistable content
+                         # If we have tool calls, we MUST save them to restore state later.
+                         # Format: <Visible Content>\n:::TOOL_CALLS:::<JSON>
+                         persist_content = content
+                         if tool_calls_data:
+                             if not persist_content:
+                                 # Add a placeholder for UI visibility
+                                 persist_content = "🤖 [Thinking/Tool Use]"
+                             
+                             import json
+                             json_calls = json.dumps(tool_calls_data)
+                             persist_content += f"\n:::TOOL_CALLS:::{json_calls}"
+                         
+                         try:
+                            saved_msg = await ChatHistoryService.add_message(db_session, conversation_id, "assistant", persist_content)
+                         except Exception as e:
+                            logger.error(f"Persist Fail: {e}")
+                    
+                    # Notify Tool Starts
+                    if hasattr(output, "tool_calls") and output.tool_calls:
+                        for tc in output.tool_calls:
+                            await stream_handler.send({
+                                "type": "tool_start",
+                                "tool": tc["name"],
+                                "args": json.dumps(tc["args"]) 
                             })
-                            
-                            try:
-                                await ChatHistoryService.add_message(
-                                    db_session, 
-                                    conversation_id, 
-                                    "tool", 
-                                    msg.content,
-                                    tool_call_id=msg.tool_call_id
-                                )
-                            except Exception as e:
-                                pass
+
+                # 3. Agent Node Complete (Failsafe)
+                elif kind == "on_chain_end" and name == "agent":
+                    node_output = data.get("output")
+                    if node_output and "messages" in node_output:
+                        for msg in node_output["messages"]:
+                            # Check for AIMessage (relaxed check)
+                            if hasattr(msg, "content") and msg.content and getattr(msg, "type", "") == "ai":
+                                 try:
+                                    # Deduplicate? ChatHistoryService logic helps?
+                                    # Ideally we rely on ID, but we generate new ID.
+                                    # Simple check: Was the last message same content?
+                                    # For now, just append.
+                                    await ChatHistoryService.add_message(db_session, conversation_id, "assistant", msg.content)
+                                 except Exception as e:
+                                    pass
+
+                # 4. Tool Execution Complete
+                elif kind == "on_chain_end" and name == "tools":
+                    node_output = data.get("output")
+                    if node_output and "messages" in node_output:
+                        for msg in node_output["messages"]:
+                            if isinstance(msg, ToolMessage):
+                                await stream_handler.send({
+                                    "type": "tool_result",
+                                    "output": msg.content
+                                })
+                                
+                                try:
+                                    await ChatHistoryService.add_message(
+                                        db_session, 
+                                        conversation_id, 
+                                        "tool", 
+                                        msg.content,
+                                        tool_call_id=msg.tool_call_id
+                                    )
+                                except Exception as e:
+                                    pass
             
-        await websocket.send_json({"type": "done"})
+            await stream_handler.send({"type": "done"})
+
+        except asyncio.CancelledError:
+            logger.warning(f"Task Cancelled for Conversation {conversation_id}")
+            # Optional: Persist [Cancelled] message?
+            await stream_handler.send({"type": "error", "content": "[Task Cancelled by User]"})
+            raise # Re-raise to let gather/wait know
+        except Exception as e:
+            logger.exception(f"Graph Execution Error: {e}")
+            await stream_handler.send({"type": "error", "content": str(e)})

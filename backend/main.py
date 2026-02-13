@@ -75,6 +75,12 @@ app.include_router(system.router, prefix="/api/v1/system", tags=["system"])
 app.include_router(settings.router, prefix="/api/v1/settings", tags=["settings"])
 app.include_router(plugins.router, prefix="/api/v1/plugins", tags=["plugins"])
 
+from app.api.endpoints import patrol
+app.include_router(patrol.router, prefix="/api/v1/patrol", tags=["Patrol"])
+
+from app.api.endpoints import knowledge
+app.include_router(knowledge.router, prefix="/api/v1/knowledge", tags=["Knowledge"])
+
 @app.get("/health", tags=["System"])
 async def health_check():
     """

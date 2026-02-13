@@ -2,15 +2,12 @@ import os
 import logging
 import chromadb
 from chromadb.config import Settings
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 import uuid
-
-# Try to import OpenAI for embedding, fallback to None or simple default if not configured
-try:
-    from app.core.config import settings
-    OPENAI_API_KEY = settings.OPENAI_API_KEY
-except ImportError:
-    OPENAI_API_KEY = None
+import langextract as lx
+from langextract.data import ExampleData, Extraction
+from langextract import factory
+from app.core.llm_config import LLMConfigManager
 
 logger = logging.getLogger(__name__)
 
@@ -115,9 +112,97 @@ class KnowledgeService:
                     })
             
             return formatted_results
+            return formatted_results
         except Exception as e:
             logger.error(f"Error querying insights: {e}")
             return []
+
+    def ingest_fault_report(self, report_text: str, source: str = "user_upload") -> Tuple[Dict[str, str], str]:
+        """
+        Structure a raw fault report using LangExtract and store it in ChromaDB.
+        Returns: (Structured Data Dict, Error Message)
+        """
+        config = LLMConfigManager.get_config()
+        if not config.api_key:
+            return {}, "OpenAI API Key is missing in configuration."
+
+        try:
+            # 1. Define Schema via Example (One-Shot)
+            example = ExampleData(
+                text="Yesterday 10pm payment service down due to connection pool saturation. We restarted pods and added circuit breaker. Recovered at 11pm.",
+                extractions=[Extraction(
+                    extraction_class="FaultReport",
+                    extraction_text="payment service down due to connection pool saturation",
+                    attributes={
+                        "symptom": "Payment service down, connection pool saturated",
+                        "action": "Restarted pods, added circuit breaker",
+                        "outcome": "Recovered at 11pm"
+                    }
+                )]
+            )
+            
+            # 2. Configure Model
+            # We use OpenAI for reasoning capability, but support custom BaseURL/Model
+            model_config = factory.ModelConfig(
+                provider="openai",
+                model_id=config.model_name or "gpt-4-turbo",
+                provider_kwargs={
+                    "api_key": config.api_key,
+                    "base_url": config.base_url
+                }
+            )
+
+            # 3. Extract
+            extracted_docs = lx.extract(
+                text_or_documents=report_text,
+                prompt_description="Extract fault details (Symptom, Action, Outcome) from this post-mortem report.",
+                examples=[example],
+                config=model_config,
+                format_type="json",
+                use_schema_constraints=False
+            )
+
+            # 4. Process Result
+            structured_data = {}
+            if extracted_docs:
+                if isinstance(extracted_docs, list):
+                    doc = extracted_docs[0]
+                else:
+                    doc = extracted_docs
+
+                if doc.extractions:
+                    ext = doc.extractions[0]
+                    structured_data = ext.attributes or {}
+
+            if not structured_data:
+                logger.warning("No structure extracted from report.")
+                return {}, "No structure extracted from report (LLM returned empty)."
+
+            # 5. Format for Knowledge Base
+            # We store a clean, semantic string for embedding search
+            kb_content = (
+                f"Symptom: {structured_data.get('symptom', 'N/A')}\n"
+                f"Action: {structured_data.get('action', 'N/A')}\n"
+                f"Outcome: {structured_data.get('outcome', 'N/A')}"
+            )
+            
+            metadata = {
+                "type": "fault_report",
+                "source": source,
+                "original_length": str(len(report_text))
+            }
+
+            success = self.add_insight(kb_content, metadata)
+            
+            if success:
+                return structured_data, None
+            else:
+                return {}, "Failed to store insight in ChromaDB."
+
+        except Exception as e:
+            error_msg = f"Ingestion failed: {e}"
+            logger.error(error_msg)
+            return {}, error_msg
 
 # Global Instance
 knowledge_service = KnowledgeService()

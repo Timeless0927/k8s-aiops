@@ -27,11 +27,14 @@ def _build_grafana_link(query: str) -> str:
         logger.error(f"Failed to build Grafana link: {e}")
         return ""
 
-async def run_loki_query(query: str, limit: int = 10, mode: str = "logs") -> str:
+# Import at module level if possible, or inside function to avoid circular imports? 
+# Module level is fine here.
+from app.services.log_forensics import LogForensicsService
+
+async def run_loki_query(query: str, limit: int = 10, mode: str = "logs", auto_analyze: bool = True) -> str:
     """
     Executes a LogQL query against Loki.
-    - limit: Max lines (default 10).
-    - mode: 'logs' (default) or 'stats' (returns counts/patterns).
+    - auto_analyze: If True, AI will automatically analyze logs for Root Cause (Smart Tool).
     """
     # ... (URL setup) ...
     base_url = MonitoringConfigManager.get_config().loki_url.rstrip('/')
@@ -57,8 +60,7 @@ async def run_loki_query(query: str, limit: int = 10, mode: str = "logs") -> str
             response = await client.get(url, params=params, headers=headers, timeout=10.0)
             
             if response.status_code != 200:
-                short_text = response.text[:200]
-                return f"Error: Loki returned status {response.status_code}. Details: {short_text}"
+                return f"Error: Loki returned status {response.status_code}."
             
             try:
                 data = response.json()
@@ -75,48 +77,39 @@ async def run_loki_query(query: str, limit: int = 10, mode: str = "logs") -> str
             link_text = f"\n\n🔗 [View Logs in Grafana]({grafana_link})" if grafana_link else ""
 
             if not result:
-                return f"No logs found for this query in the last 1 hour.{link_text}"
+                return f"No logs found.{link_text}"
             
-            # Format logs for LLM readability
-            # Stricter Token Limits (Option A)
-            logs = []
-            total_chars = 0
-            MAX_TOTAL_CHARS = 2000 # Reduced from 8000
-            MAX_LINE_CHARS = 500   # Reduced from 1000
+            # --- AGGREGATION LOGIC (Simplified for Analysis) ---
+            full_logs_for_ai = []
+            preview_logs = []
             
             for stream_entry in result:
                 values = stream_entry.get("values", [])
                 for ts, line in values:
-                    if len(line) > MAX_LINE_CHARS:
-                        line = line[:MAX_LINE_CHARS] + "...(truncated)"
-                    
-                    logs.append(line)
+                    full_logs_for_ai.append(line)
+                    if len(preview_logs) < 10: # Only preview 10 lines
+                        preview_logs.append(line[:200] + "..." if len(line) > 200 else line)
             
-            # Stats Mode (Option C)
-            if mode == "stats":
-                count = len(logs)
-                # Simple keyword analysis
-                error_count = sum(1 for l in logs if "error" in l.lower() or "exception" in l.lower())
-                return f"""📊 **Log Statistics**
-- **Total Lines Found**: {count}
-- **Potential Errors**: {error_count}
-- **Query**: `{query}`
-
-💡 **Tip**: Use `run_loki_query(query="{query} |= \\"error\\"", limit=5)` to see error details.
-{link_text}"""
-
-            # Dedup
-            unique_logs = list(dict.fromkeys(logs))
+            # 1. Preview Output
+            preview_text = "\n".join(preview_logs)
+            if len(full_logs_for_ai) > 10:
+                preview_text += f"\n... ({len(full_logs_for_ai)-10} more lines hidden)"
             
-            final_output = []
-            for log in unique_logs[:limit]:
-                if total_chars + len(log) > MAX_TOTAL_CHARS:
-                    final_output.append(f"\n⚠️ **Output Truncated** (Exceeded {MAX_TOTAL_CHARS} chars). Use stricter filters.")
-                    break
-                final_output.append(log)
-                total_chars += len(log)
-
-            return "\n".join(final_output) + link_text
+            # 2. Smart Analysis
+            analysis_text = ""
+            if auto_analyze and full_logs_for_ai:
+                # Analyze combined text (limit to 10k chars to be safe for local LLM)
+                combined_text = "\n".join(full_logs_for_ai)[:10000]
+                structured, _ = LogForensicsService.analyze_logs(combined_text)
+                if structured:
+                     analysis_text = f"""
+🧠 **Smart Analysis (Auto-Generated)**:
+- **Incident**: {structured.get('incident_type')}
+- **Cause**: {structured.get('root_cause')}
+- **Fix**: {structured.get('suggestion')}
+"""
+            
+            return f"**Logs Preview**:\n{preview_text}\n{analysis_text}{link_text}"
 
     except httpx.ConnectError:
         return f"Error: Could not connect to Loki at {base_url}. Please check configuration."

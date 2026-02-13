@@ -1,14 +1,14 @@
-import React from 'react';
-import { Send, Terminal } from 'lucide-react';
+import { Send, Terminal, Square } from 'lucide-react';
 
 interface ChatInputProps {
     input: string;
     setInput: (input: string) => void;
     handleSend: () => void;
+    stopGeneration?: () => void;
     status: string;
 }
 
-export const ChatInput: React.FC<ChatInputProps> = ({ input, setInput, handleSend, status }) => {
+export const ChatInput: React.FC<ChatInputProps> = ({ input, setInput, handleSend, stopGeneration, status }) => {
     return (
         <div className="absolute bottom-10 left-0 w-full z-40 px-8 flex justify-center pointer-events-none">
             <div className="w-full max-w-4xl transform transition-all duration-500 ease-out animate-slide-up pointer-events-auto">
@@ -33,23 +33,34 @@ export const ChatInput: React.FC<ChatInputProps> = ({ input, setInput, handleSen
                         />
 
                         <div className="pr-2 flex items-center gap-2">
-                            {input.length > 0 && (
+                            {input.length > 0 && status !== 'streaming' && (
                                 <span className="hidden sm:inline-block text-[10px] font-mono text-slate-400 bg-slate-100 px-2 py-1 rounded border border-slate-200">
                                     发送
                                 </span>
                             )}
-                            <button
-                                onClick={handleSend}
-                                disabled={!input.trim() || status === 'streaming'}
-                                className={`
-                                p-3 rounded-2xl transition-all duration-300 transform
-                                ${input.trim() && status !== 'streaming'
-                                        ? 'bg-primary text-white hover:bg-primary-hover shadow-lg hover:shadow-primary/30 hover:scale-105 active:scale-95'
-                                        : 'bg-slate-100 text-slate-300 cursor-not-allowed'}
-                            `}
-                            >
-                                <Send size={18} strokeWidth={2} className={input.trim() ? 'ml-0.5' : ''} />
-                            </button>
+
+                            {status === 'streaming' ? (
+                                <button
+                                    onClick={stopGeneration}
+                                    className="p-3 rounded-2xl transition-all duration-300 transform bg-red-50 text-red-500 hover:bg-red-100 hover:shadow-lg hover:shadow-red-500/20 active:scale-95 border border-red-200"
+                                    title="停止生成"
+                                >
+                                    <Square size={18} strokeWidth={2.5} fill="currentColor" className="opacity-90" />
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleSend}
+                                    disabled={!input.trim()}
+                                    className={`
+                                    p-3 rounded-2xl transition-all duration-300 transform
+                                    ${input.trim()
+                                            ? 'bg-primary text-white hover:bg-primary-hover shadow-lg hover:shadow-primary/30 hover:scale-105 active:scale-95'
+                                            : 'bg-slate-100 text-slate-300 cursor-not-allowed'}
+                                `}
+                                >
+                                    <Send size={18} strokeWidth={2} className={input.trim() ? 'ml-0.5' : ''} />
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
